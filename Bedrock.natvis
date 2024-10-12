@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="Span&lt;*&gt;">
+    <DisplayString>{{ Size={mSize} }}</DisplayString>
+    <Expand>
+      <Item Name="[Size]">mSize</Item>
+      <ArrayItems>
+        <Size>mSize</Size>
+        <ValuePointer>mData</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="Vector&lt;*&gt;">
+    <DisplayString>{{ Size={mSize} }}</DisplayString>
+    <Expand>
+      <Item Name="[Size]">mSize</Item>
+      <Item Name="[Capacity]">mCapacity</Item>
+      <ArrayItems>
+        <Size>mSize</Size>
+        <ValuePointer>mData</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="StringView">
+    <DisplayString>{ mData, [mSize]s8}</DisplayString>
+    <StringView>mData, [mSize]s8</StringView>
+  </Type>
+  
+</AutoVisualizer>
