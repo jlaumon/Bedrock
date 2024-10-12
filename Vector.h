@@ -3,6 +3,7 @@
 
 #include <Bedrock/Core.h>
 #include <Bedrock/TypeTraits.h>
+#include <Bedrock/Algorithm.h>
 #include <Bedrock/InitializerList.h>
 #include <Bedrock/Allocator.h>
 #include <Bedrock/Span.h>

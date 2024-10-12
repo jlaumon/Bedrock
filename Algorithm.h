@@ -73,7 +73,7 @@ constexpr bool gContains(const taContainer& ioContainer, const taValue& inElem)
 
 // Check if any element in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gAnyOf(taContainer& inContainer, taPredicate inPredicate)
+bool gAnyOf(taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -84,7 +84,7 @@ bool gAnyOf(taContainer& inContainer, taPredicate inPredicate)
 
 // Check if none of the elements in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gNoneOf(taContainer& inContainer, taPredicate inPredicate)
+bool gNoneOf(taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -95,7 +95,7 @@ bool gNoneOf(taContainer& inContainer, taPredicate inPredicate)
 
 // Check if all the elements in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gAllOf(taContainer& inContainer, taPredicate inPredicate)
+bool gAllOf(taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (!inPredicate(element))
@@ -123,18 +123,6 @@ constexpr bool gEquals(const taContainerA& inContainerA, const taContainerB& inC
 		++it_b;
 	}
 
-	return true;
-}
-
-
-// Add a value to a vector-like container only if it's not already in it.
-template<typename taValue, typename taContainer>
-constexpr bool gPushBackUnique(taContainer& ioContainer, const taValue& inElem)
-{
-	if (gContains(ioContainer, inElem))
-		return false;
-
-	ioContainer.push_back(inElem);
 	return true;
 }
 
@@ -170,7 +158,7 @@ constexpr taIterator gLowerBound(taIterator inFirst, taIterator inLast, const ta
 template<typename taValue, typename taContainer>
 constexpr auto gFindSorted(taContainer& inContainer, const taValue& inElem)
 {
-	auto end = inContainer.end();
+	auto end = inContainer.End();
 	auto it = gLowerBound(inContainer.Begin(), end, inElem);
 
 	if (it != end && *it == inElem)
@@ -184,7 +172,7 @@ constexpr auto gFindSorted(taContainer& inContainer, const taValue& inElem)
 template<typename taValue, typename taContainer>
 constexpr auto gEmplaceSorted(taContainer& ioContainer, const taValue& inElem)
 {
-	auto end = ioContainer.end();
+	auto end = ioContainer.End();
 	auto it = gLowerBound(ioContainer.Begin(), end, inElem);
 
 	if (it != end && *it == inElem)
@@ -221,8 +209,8 @@ constexpr void gSwapErase(taContainer& inContainer, const taIterator& inIterator
 
 
 // Remove the first value that matches predicate from a vector-like container.
-template<typename taContainer, typename taPred>
-constexpr bool gSwapEraseFirstIf(taContainer& inContainer, const taPred& inPredicate)
+template<typename taContainer, typename taPredicate>
+constexpr bool gSwapEraseFirstIf(taContainer& inContainer, const taPredicate& inPredicate)
 {
 	auto end = inContainer.End();
 	auto begin = inContainer.Begin();
