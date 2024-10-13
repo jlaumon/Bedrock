@@ -1,0 +1,3 @@
+[submodule "thirdparty/rapidhash"]
+	path = thirdparty/rapidhash
+	url = https://github.com/jlaumon/rapidhash
