@@ -16,7 +16,7 @@ REGISTER_TEST("Vector")
 
 	struct TestStruct
 	{
-		TestStruct(int inValue) : mValue(inValue) {}
+		explicit TestStruct(int inValue) : mValue(inValue) {}
 		int mValue;
 	};
 
