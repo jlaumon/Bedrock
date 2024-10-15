@@ -22,6 +22,9 @@ template<class taFrom, class taTo> constexpr bool cIsConvertible = __is_converti
 // Equivalent to std::has_unique_object_representations
 template<class T> constexpr bool cHasUniqueObjectRepresentations = __has_unique_object_representations(T);
 
+// Equivalent to std::is_trivially_default_constructible
+template <class T> constexpr bool cIsTriviallyDefaultConstructible = __is_trivially_constructible(T);
+
 // Equivalent to std::is_const
 namespace Details
 {

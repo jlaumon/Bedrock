@@ -9,6 +9,12 @@
 #include <Bedrock/Span.h>
 #include <Bedrock/PlacementNew.h>
 
+enum class EResizeInit
+{
+	NoZeroInit,	// If the type has a constructor, it will be called. Otherwise it is left uninitialized.
+	ZeroInit,	// If the type has a constructor, it will be called. Otherwise it is zero-initialized.
+};
+
 template <typename taType, typename taAllocator = Allocator<taType>>
 struct Vector : private taAllocator
 {
@@ -66,6 +72,7 @@ struct Vector : private taAllocator
 
 	void Clear();
 	void Reserve(int inCapacity);
+	void Resize(int inNewSize, EResizeInit inInit = EResizeInit::ZeroInit);
 
 	// TODO
 	// insert
@@ -76,6 +83,8 @@ struct Vector : private taAllocator
 	void PushBack(taType&& inValue);
 	template <typename... taArgs>
 	void EmplaceBack(taArgs&&... inArgs);
+
+	void PopBack();
 
 private:
 	void MoveFrom(Vector&& ioOther);
@@ -107,6 +116,8 @@ Span(const Vector<taType, taAllocator>&) -> Span<const taType>;
 template <typename taType, typename taAllocator>
 Vector<taType, taAllocator>::~Vector()
 {
+	Clear();
+
 	if (mData != nullptr)
 		taAllocator::Free(mData, mCapacity);
 }
@@ -238,6 +249,43 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 
 
 template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
+{
+	if (inNewSize < mSize)
+	{
+		// Shriking.
+		// Destroy the elements that need to be removed.
+		for (int i = inNewSize, n = mSize; i < n; i++)
+			mData[i].~taType();
+
+		// Update the size.
+		mSize = inNewSize;
+	}
+	else if (inNewSize > mSize)
+	{
+		// Growing.
+		// Reserve memory first.
+		Reserve(inNewSize);
+
+		// Construct the elements.
+		if (inInit == EResizeInit::ZeroInit)
+		{
+			for (int i = mSize, n = inNewSize; i < n; i++)
+				gPlacementNew(mData[i]);
+		}
+		else
+		{
+			for (int i = mSize, n = inNewSize; i < n; i++)
+				gPlacementNewNoZeroInit(mData[i]);
+		}
+
+		// Update the size.
+		mSize = inNewSize;
+	}
+}
+
+
+template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::PushBack(const taType& inValue)
 {
 	Grow(mSize + 1);
@@ -265,6 +313,15 @@ void Vector<taType, taAllocator>::EmplaceBack(taArgs&&... inArgs)
 
 	gPlacementNew(mData[mSize], gForward<taArgs>(inArgs)...);
 	mSize++;
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::PopBack()
+{
+	gAssert(Size() >= 1);
+	mSize--;
+	mData[mSize].~taType();
 }
 
 

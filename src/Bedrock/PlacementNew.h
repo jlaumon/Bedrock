@@ -10,4 +10,8 @@ constexpr void  operator delete(void*, void*, Details::PlacementNewTag) noexcept
 
 // Placement new
 template<typename taType, typename... taArgs>
-void gPlacementNew(taType& ioStorage, taArgs&&... inArgs) { new (&ioStorage, Details::PlacementNewTag{}) taType(gForward<taArgs>(inArgs)...); }
+inline void gPlacementNew(taType& ioStorage, taArgs&&... inArgs) { new (&ioStorage, Details::PlacementNewTag{}) taType(gForward<taArgs>(inArgs)...); }
+
+// Placement new that calls the default constructor only if there's one (no zero-initialization).
+template<typename taType>
+inline void gPlacementNewNoZeroInit(taType& ioStorage) { new (&ioStorage, Details::PlacementNewTag{}) taType; }
