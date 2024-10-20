@@ -3,6 +3,7 @@
 
 #include <Bedrock/Core.h>
 #include <Bedrock/TypeTraits.h>
+#include <Bedrock/Algorithm.h>
 
 template <typename taType>
 struct Span

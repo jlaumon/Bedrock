@@ -2,6 +2,7 @@
 #include <Bedrock/Test.h>
 #include <Bedrock/Debug.h>
 #include <Bedrock/Vector.h>
+#include <Bedrock/StringView.h>
 
 struct Test
 {
@@ -17,9 +18,9 @@ static Vector<Test>& sGetAllTests()
 }
 
 
-void gRegisterTest(StringView inName, TestFunction inFunction)
+void gRegisterTest(const char* inName, TestFunction inFunction)
 {
-	gAssert(!inName.Empty());
+	gAssert(inName != nullptr && inName[0] != 0);
 
 	sGetAllTests().PushBack({ inName, inFunction });
 }
@@ -56,7 +57,7 @@ bool gRunTests()
 }
 
 
-void gFailTest(StringView inMacro, StringView inCode, StringView inFile, int inLine)
+void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine)
 {
 	//gApp.LogError(R"({}({}) failed ({}:{}))", inMacro, inCode, inFile, inLine);
 

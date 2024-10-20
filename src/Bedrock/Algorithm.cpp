@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 #include <Bedrock/Algorithm.h>
+#include <Bedrock/StringView.h>
 #include <Bedrock/Test.h>
 
 REGISTER_TEST("ReverseIterator")
