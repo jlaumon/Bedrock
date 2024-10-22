@@ -27,7 +27,7 @@ void gSwap(taType& ioA, taType& ioB)
 {
 	taType temp = gMove(ioA);
 	ioA = gMove(ioB);
-	ioB = gMove(ioA);
+	ioB = gMove(temp);
 }
 
 
