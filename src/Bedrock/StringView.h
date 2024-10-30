@@ -153,3 +153,5 @@ constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 	return { mData + inPosition, size };
 }
 
+
+uint64 gHash(StringView inValue);

@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #include<Bedrock/StringView.h>
+#include<Bedrock/Hash.h>
 #include<Bedrock/Test.h>
+
+
+uint64 gHash(StringView inValue)
+{
+	return gHash(inValue.Begin(), inValue.Size());
+}
 
 
 REGISTER_TEST("StringView")
