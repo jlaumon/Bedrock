@@ -95,5 +95,6 @@ constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValu
 // Some useful C std function replacements to avoid an include or because the real ones aren't constexpr.
 constexpr int gStrLen(const char* inString)									{ return (int)__builtin_strlen(inString); }
 constexpr int gMemCmp(const void* inPtrA, const void* inPtrB, int inSize)	{ return __builtin_memcmp(inPtrA, inPtrB, inSize); }
-void          gMemCopy(void* inDest, const void* inSource, int inSize);
+extern "C" void* __cdecl memcpy(void* inDest, void const* inSource, size_t inSize);
+inline void   gMemCopy(void* inDest, const void* inSource, int inSize)		{ memcpy(inDest, inSource, inSize); }
 
