@@ -67,6 +67,11 @@ struct Vector : private taAllocator
 	constexpr const taType* begin() const { return mData; }
 	constexpr const taType* end()   const { return mData + mSize; }
 
+	constexpr const taType& Front() const { return operator[](0); }
+	constexpr const taType& Back()  const { return operator[](mSize - 1); }
+	constexpr taType& Front() { return operator[](0); }
+	constexpr taType& Back()  { return operator[](mSize - 1); }
+
 	constexpr taType&		operator[](int inPosition)		 { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 	constexpr const taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
@@ -78,6 +83,7 @@ struct Vector : private taAllocator
 	// insert
 	// emplace
 	// erase
+	void SwapErase(int inIndex);
 
 	void PushBack(const taType& inValue);
 	void PushBack(taType&& inValue);
@@ -282,6 +288,13 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 		// Update the size.
 		mSize = inNewSize;
 	}
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::SwapErase(int inIndex)
+{
+	gSwapErase(*this, Begin() + inIndex);
 }
 
 

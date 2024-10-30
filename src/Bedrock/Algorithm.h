@@ -203,7 +203,8 @@ constexpr auto gFind(taContainer& inContainer, const taValue& inElem)
 template<typename taContainer, typename taIterator>
 constexpr void gSwapErase(taContainer& inContainer, const taIterator& inIterator)
 {
-	gSwap(inContainer.Back(), *inIterator);
+	if (inIterator != (inContainer.End() - 1))
+		gSwap(inContainer.Back(), *inIterator);
 	inContainer.PopBack();
 }
 
