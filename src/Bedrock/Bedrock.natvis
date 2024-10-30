@@ -28,5 +28,14 @@
     <DisplayString>{ mData, [mSize]s8}</DisplayString>
     <StringView>mData, [mSize]s8</StringView>
   </Type>
-  
+
+
+  <Type Name="Details::HashMapBucket">
+    <Expand>
+      <Item Name="Distance">mDistanceAndFingerprint / cDistanceIncrement</Item>
+      <Item Name="Fingerprint">(char)(mDistanceAndFingerprint &amp; cFingerprintMask), nvoxb</Item>
+      <Item Name="Index">mKeyValueIndex</Item>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>
