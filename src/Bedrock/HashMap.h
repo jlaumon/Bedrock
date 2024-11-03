@@ -33,7 +33,7 @@ namespace Details
 }
 
 
-template <typename taKey, typename taValue>
+template <typename taKey, typename taValue, template <typename> typename taAllocator = Allocator>
 struct HashMap
 {
 	struct KeyValue
@@ -52,30 +52,81 @@ struct HashMap
 	using ConstIter = const KeyValue*;
 	using Iter = const KeyValue*;
 
+
+	HashMap() = default;
+	~HashMap() = default;
+
+	HashMap(const HashMap& inOther)
+	{
+		*this = inOther;
+	}
+
+	HashMap& operator=(const HashMap& inOther)
+	{
+		Clear();
+		
+		mKeyValues.Reserve(inOther.mKeyValues.Capacity());
+		mBuckets.Reserve(inOther.mBuckets.Capacity());
+
+		mKeyValues = inOther.mKeyValues;
+		mBuckets = inOther.mBuckets;
+
+		return *this;
+	}
+
+	HashMap(HashMap&&) = default;
+	HashMap& operator=(HashMap&& ioOther) = default;
+
+	void Clear()
+	{
+		mKeyValues.Clear();
+		mBuckets.Clear();
+		mBuckets.Resize(mBuckets.Capacity());
+	}
+
 	bool Empty() const
 	{
 		return mKeyValues.Empty();
 	}
 
 	ConstIter Begin() const { return mKeyValues.Begin(); }
-	ConstIter End() const { return mKeyValues.Begin(); }
+	ConstIter End() const { return mKeyValues.End(); }
 	Iter Begin() { return mKeyValues.Begin(); }
-	Iter End() { return mKeyValues.Begin(); }
+	Iter End() { return mKeyValues.End(); }
 
 	bool IsFull() const
 	{
-		// todo
-		return false;
+		return mKeyValues.Size() == mKeyValues.Capacity();
 	}
 
 	void Grow()
 	{
-		// todo
+		int new_buckets_size = gMax(mBuckets.Size() * 2, 16);
+		int new_key_values_size = new_buckets_size * 13 / 16; // 13/16 = 0.8125
+
+		// Free the buckets first to make sure the TempAllocator can grow the key-values allocation.
+		mBuckets.ClearAndFreeMemory();
+		mKeyValues.Reserve(new_key_values_size);
+
+		// Re-allocate the buckets.
+		mBuckets.Resize(new_buckets_size);
+
+		// Fill the buckets.
+		for (const KeyValue& key_value : mKeyValues)
+		{
+			// Find the right bucket index for this key.
+			// Note: We know the key is not already present so we can skip some compares.
+			bool key_may_be_found = false;
+			auto [bucket_index, distance_and_fingerprint, _] = FindInternal(key_value.mKey, key_may_be_found);
+
+			// Insert the bucket.
+			InsertBucket({ distance_and_fingerprint, mKeyValues.GetIndex(key_value) }, bucket_index);
+		}
 	}
 
 	Iter Find(const taKey& inKey)
 	{
-		if (Empty())
+		if (Empty()) [[unlikely]]
 			return End();
 
 		// Try to find the key.
@@ -92,7 +143,7 @@ struct HashMap
 
 	InsertResult Insert(const taKey& inKey, const taValue& inValue)
 	{
-		if (IsFull())
+		if (IsFull()) [[unlikely]]
 			Grow();
 
 		// Try to find the key.
@@ -108,23 +159,9 @@ struct HashMap
 		// Key does not exist, add it.
 		mKeyValues.EmplaceBack(inKey, inValue);
 
-		// Prepare a new bucket for it.
+		// Insert a new bucket for it.
 		Bucket new_bucket = { distance_and_fingerprint, mKeyValues.Size() - 1 };
-
-		const int buckets_mask = GetBucketSizeMask();
-		while (true)
-		{
-			// Add it at the right index by swapping with existing bucket.
-			gSwap(mBuckets[bucket_index], new_bucket);
-
-			// If the existing bucket was empty, nothing else to do.
-			if (new_bucket.mDistanceAndFingerprint == 0)
-				break;
-
-			// Otherwise keep swapping with the next bucket until an empty one is found.
-			new_bucket.mDistanceAndFingerprint += Bucket::cDistanceIncrement;
-			bucket_index = (bucket_index + 1) & buckets_mask;
-		}
+		InsertBucket(new_bucket, bucket_index);
 
 		KeyValue& key_value = mKeyValues.Back();
 		return { key_value.mKey, key_value.mValue, EInsertResult::Added };
@@ -132,7 +169,7 @@ struct HashMap
 
 	bool Erase(const taKey& inKey)
 	{
-		if (Empty())
+		if (Empty()) [[unlikely]]
 			return false;
 
 		// Try to find the key.
@@ -173,14 +210,8 @@ struct HashMap
 		return true;
 	}
 
-
-	HashMap()
-	{
-		static_assert(cIsTriviallyDefaultConstructible<Bucket>);
-		mBuckets.Resize(16);
-	}
-
 private:
+	using Bucket = Details::HashMapBucket;
 
 	int GetBucketSizeMask() const
 	{
@@ -192,12 +223,12 @@ private:
 
 	struct FindResult
 	{
-		int    mBucketIndex;
-		uint32 mDistanceAndFingerprint;
-		bool   mFound;
+		int    mBucketIndex;			// The bucket where the key is or should be inserted.
+		uint32 mDistanceAndFingerprint; // The distance and fingerprint of the key for this bucket.
+		bool   mFound;					// True if the key was found at this bucket.
 	};
 
-	FindResult FindInternal(const taKey& inKey) const
+	FindResult FindInternal(const taKey& inKey, bool inKeyMayBeFound = true) const
 	{
 		// Calculate the hash.
 		const uint64 hash         = gHash(inKey);
@@ -223,7 +254,8 @@ private:
 			Bucket bucket = mBuckets[bucket_index];
 
 			// First check if the distance & fingerprint are equal.
-			if (bucket.mDistanceAndFingerprint == distance_and_fingerprint) [[likely]]
+			// Note: inKeyMayBeFound = false is a special case when growing the map where we know the key won't be found.
+			if (inKeyMayBeFound && bucket.mDistanceAndFingerprint == distance_and_fingerprint) [[likely]]
 			{
 				// Then check if the key is equal too.
 				if (mKeyValues[bucket.mKeyValueIndex].mKey == inKey) [[likely]]
@@ -245,12 +277,29 @@ private:
 		}
 	}
 
+	void InsertBucket(Bucket inBucket, int inIndex)
+	{
+		Bucket    bucket       = inBucket;
+		int       bucket_index = inIndex;
+		const int buckets_mask = GetBucketSizeMask();
+		while (true)
+		{
+			// Add it at the right index by swapping with existing bucket.
+			gSwap(mBuckets[bucket_index], bucket);
 
-	Vector<KeyValue> mKeyValues;	// Key-value pairs stored in a dense array.
+			// If the existing bucket was empty, nothing else to do.
+			if (bucket.mDistanceAndFingerprint == 0)
+				break;
 
-	using Bucket = Details::HashMapBucket;
-	Vector<Bucket> mBuckets;
-	uint32         mSizeMask = 0;
+			// Otherwise keep swapping with the next bucket until an empty one is found.
+			bucket.mDistanceAndFingerprint += Bucket::cDistanceIncrement;
+			bucket_index = (bucket_index + 1) & buckets_mask;
+		}
+	}
+
+	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues;	// Key-value pairs stored in a dense array.
+
+	Vector<Bucket, taAllocator<Bucket>> mBuckets;
 };
 
 

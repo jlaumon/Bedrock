@@ -51,6 +51,8 @@ inline thread_local uint8* gTempMemCurrent   = nullptr;
 // Allocate stack-like temporary memory.
 MemBlock gTempMemAlloc(int64 inSize)
 {
+	gAssert(gTempMemBegin != nullptr); // Call gThreadInitTempMemory.
+
 	int64  aligned_size = gAlignUp(inSize, cTempMemAlignment);
 	uint8* current      = gTempMemCurrent;
 

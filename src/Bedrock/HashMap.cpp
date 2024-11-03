@@ -2,6 +2,7 @@
 #include <Bedrock/HashMap.h>
 #include <Bedrock/Test.h>
 #include <Bedrock/String.h>
+#include <Bedrock/Random.h>
 
 
 REGISTER_TEST("HashMap")
@@ -33,5 +34,47 @@ REGISTER_TEST("HashMap")
 	TEST_TRUE(map.Erase("ciabatta"));
 	TEST_TRUE(map.Find("pain")->mValue == "perdu");
 	TEST_FALSE(map.Erase("broad"));
+};
 
+
+template <template <typename> typename taAllocator>
+void LargeHashMapTest()
+{
+	HashMap<int, int, taAllocator> map;
+
+	constexpr int cMapSize         = 100000;
+	constexpr int cInitialRandSeed = 42;
+
+	int rand_seed = cInitialRandSeed;
+	for (int i = 0; i < cMapSize; i++)
+	{
+		rand_seed = gRand32(rand_seed);
+		map.Insert(i, rand_seed);
+	}
+
+	rand_seed = cInitialRandSeed;
+	for (int i = 0; i < cMapSize; i++)
+	{
+		rand_seed = gRand32(rand_seed);
+		auto iter = map.Find(i);
+		TEST_TRUE(iter != map.End());
+		TEST_TRUE(iter->mKey == i);
+		TEST_TRUE(iter->mValue == rand_seed);
+	}
+}
+
+
+REGISTER_TEST("Large HashMap")
+{
+	LargeHashMapTest<Allocator>();
+};
+
+
+REGISTER_TEST("Large Temp HashMap")
+{
+	// Make sure temp memory is initialized or the tests will fail.
+	if (gTempMemBegin == nullptr)
+		gThreadInitTempMemory(100_KiB);
+
+	LargeHashMapTest<TempAllocator>();
 };

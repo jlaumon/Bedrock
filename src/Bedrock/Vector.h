@@ -15,6 +15,7 @@ enum class EResizeInit
 	ZeroInit,	// If the type has a constructor, it will be called. Otherwise it is zero-initialized.
 };
 
+
 template <typename taType, typename taAllocator = Allocator<taType>>
 struct Vector : private taAllocator
 {
@@ -71,11 +72,13 @@ struct Vector : private taAllocator
 	constexpr const taType& Back()  const { return operator[](mSize - 1); }
 	constexpr taType& Front() { return operator[](0); }
 	constexpr taType& Back()  { return operator[](mSize - 1); }
+	constexpr int GetIndex(const taType& inElement) const;
 
 	constexpr taType&		operator[](int inPosition)		 { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 	constexpr const taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
 	void Clear();
+	void ClearAndFreeMemory();
 	void Reserve(int inCapacity);
 	void Resize(int inNewSize, EResizeInit inInit = EResizeInit::ZeroInit);
 
@@ -122,10 +125,7 @@ Span(const Vector<taType, taAllocator>&) -> Span<const taType>;
 template <typename taType, typename taAllocator>
 Vector<taType, taAllocator>::~Vector()
 {
-	Clear();
-
-	if (mData != nullptr)
-		taAllocator::Free(mData, mCapacity);
+	ClearAndFreeMemory();
 }
 
 
@@ -209,12 +209,33 @@ Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Span<taType>
 
 
 template <typename taType, typename taAllocator>
+constexpr int Vector<taType, taAllocator>::GetIndex(const taType& inElement) const
+{
+	int index = (int)(&inElement - mData);
+	gBoundsCheck(index, mSize);
+	return index;
+}
+
+
+template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::Clear()
 {
 	for (taType& element : *this)
 		element.~taType();
 
 	mSize = 0;
+}
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::ClearAndFreeMemory()
+{
+	Clear();
+
+	if (mData != nullptr)
+	{
+		taAllocator::Free(mData, mCapacity);
+		mData = nullptr;
+	}
 }
 
 
