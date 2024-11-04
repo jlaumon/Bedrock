@@ -38,13 +38,14 @@ REGISTER_TEST("HashMap")
 
 
 template <template <typename> typename taAllocator>
-void LargeHashMapTest()
+static void sLargeHashMapTest()
 {
 	HashMap<int, int, taAllocator> map;
 
 	constexpr int cMapSize         = 100000;
 	constexpr int cInitialRandSeed = 42;
 
+	// Fill a map with lots of random values.
 	int rand_seed = cInitialRandSeed;
 	for (int i = 0; i < cMapSize; i++)
 	{
@@ -52,6 +53,7 @@ void LargeHashMapTest()
 		map.Insert(i, rand_seed);
 	}
 
+	// Check that all the values are found.
 	rand_seed = cInitialRandSeed;
 	for (int i = 0; i < cMapSize; i++)
 	{
@@ -66,7 +68,7 @@ void LargeHashMapTest()
 
 REGISTER_TEST("Large HashMap")
 {
-	LargeHashMapTest<Allocator>();
+	sLargeHashMapTest<Allocator>();
 };
 
 
@@ -74,5 +76,5 @@ REGISTER_TEST("Large Temp HashMap")
 {
 	TEST_INIT_TEMP_MEMORY(100_KiB);
 
-	LargeHashMapTest<TempAllocator>();
+	sLargeHashMapTest<TempAllocator>();
 };
