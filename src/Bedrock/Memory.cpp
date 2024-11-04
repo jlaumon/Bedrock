@@ -21,27 +21,30 @@ void gMemFree(MemBlock inMemory)
 }
 
 
-void gThreadInitTempMemory(int64 inTotalSize)
+void gThreadInitTempMemory(MemBlock inMemory)
 {
-	gAssert(gTempMemBegin == nullptr);					// Already initialized.
-	gAssert((inTotalSize % cTempMemAlignment) == 0);	// Total size should be aligned.
+	gAssert(gTempMemBegin == nullptr);							// Already initialized.
+	gAssert(((uint64)inMemory.mPtr % cTempMemAlignment) == 0);	// Pointer should be aligned.
+	gAssert((inMemory.mSize % cTempMemAlignment) == 0);			// Size should be aligned.
 
-	gTempMemBegin      = gMemAlloc(inTotalSize).mPtr;
-	gTempMemEnd        = gTempMemBegin + inTotalSize;
+	gTempMemBegin      = inMemory.mPtr;
+	gTempMemEnd        = gTempMemBegin + inMemory.mSize;
 	gTempMemCurrent    = gTempMemBegin;
 }
 
 
-void gThreadExitTempMemory()
+MemBlock gThreadExitTempMemory()
 {
 	// Everything should be freed before exiting (or not initialized).
 	gAssert(gTempMemCurrent == gTempMemBegin);
 
-	gMemFree({ gTempMemBegin, gTempMemEnd - gTempMemBegin });
+	MemBlock memory{ gTempMemBegin, gTempMemEnd - gTempMemBegin };
 
 	gTempMemBegin   = nullptr;
 	gTempMemEnd     = nullptr;
 	gTempMemCurrent = nullptr;
+
+	return memory;
 }
 
 

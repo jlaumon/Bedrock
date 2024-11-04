@@ -47,8 +47,7 @@ REGISTER_TEST("String")
 REGISTER_TEST("TempString")
 {
 	// Make sure temp memory is initialized or the tests will fail.
-	if (gTempMemBegin == nullptr)
-		gThreadInitTempMemory(10_KiB);
+	TEST_INIT_TEMP_MEMORY(1_KiB);
 
 	TempString test = "test";
 

@@ -72,9 +72,7 @@ REGISTER_TEST("Large HashMap")
 
 REGISTER_TEST("Large Temp HashMap")
 {
-	// Make sure temp memory is initialized or the tests will fail.
-	if (gTempMemBegin == nullptr)
-		gThreadInitTempMemory(100_KiB);
+	TEST_INIT_TEMP_MEMORY(100_KiB);
 
 	LargeHashMapTest<TempAllocator>();
 };

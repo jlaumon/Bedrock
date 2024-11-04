@@ -2,6 +2,7 @@
 #pragma once
 
 #include <Bedrock/Core.h>
+#include <Bedrock/Memory.h>
 
 // Tests are only enabled in debug. They are compiled but not registered in release (and should be optimized out).
 #ifdef ASSERTS_ENABLED
@@ -48,8 +49,21 @@ namespace Details
 // };
 #define REGISTER_TEST(name) static auto TOKEN_PASTE(test_register, __LINE__) = Details::TestDummy{ name } *[]()
 
+// Check that a condition is true. Fail the current test otherwise.
+#define TEST_TRUE(code) do { if (!(code)) gFailTest("TEST_TRUE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+
+// Check that a condition is false. Fail the current test otherwise.
+#define TEST_FALSE(code) do { if (code) gFailTest("TEST_FALSE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+
+
+// Initialize Temporary Memory for the scope of a test.
+// eg. TEST_INIT_TEMP_MEMORY(100_KiB);
+#define TEST_INIT_TEMP_MEMORY(size_in_bytes) Details::TestScopedTempMemory<size_in_bytes> TOKEN_PASTE(test_temp_mem, __LINE__)
+
+
 namespace Details
 {
+	// Get the file name part of a path. eg. file.cpp for path/to/file.cpp
 	consteval const char* gConstevalGetFileNamePart(const char* inPath)
 	{
 		int after_last_slash = 0;
@@ -63,8 +77,44 @@ namespace Details
 
 		return inPath + after_last_slash;
 	}
-}
 
-#define TEST_TRUE(code) do { if (!(code)) gFailTest("TEST_TRUE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
-#define TEST_FALSE(code) do { if (code) gFailTest("TEST_FALSE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+	// Helper to initialize temporary memory for the scope of a test.
+	template <int64 taSize>
+	struct TestScopedTempMemory : NoCopy
+	{
+		TestScopedTempMemory()
+		{
+			// Save current temp memory setup.
+			mSavedTempMemBegin   = gTempMemBegin;
+			mSavedTempMemEnd     = gTempMemEnd;
+			mSavedTempMemCurrent = gTempMemCurrent;
+
+			gTempMemBegin   = nullptr;
+			gTempMemEnd     = nullptr;
+			gTempMemCurrent = nullptr;
+
+			// (Re-)initialize the temp memory with the internal buffer.
+			gThreadInitTempMemory({ mBuffer, sizeof(mBuffer) });
+		}
+
+		~TestScopedTempMemory()
+		{
+			// Deinitialize the temp memory. This asserts that everything was freed.
+			MemBlock memory = gThreadExitTempMemory();
+			gAssert(memory.mPtr == mBuffer);
+			gAssert(memory.mSize == sizeof(mBuffer));
+
+			// Restore the saved temp memory setup.
+			gTempMemBegin   = mSavedTempMemBegin;
+			gTempMemEnd     = mSavedTempMemEnd;
+			gTempMemCurrent = mSavedTempMemCurrent;
+		}
+
+		uint8* mSavedTempMemBegin     = nullptr;
+		uint8* mSavedTempMemEnd       = nullptr;
+		uint8* mSavedTempMemCurrent   = nullptr;
+
+		alignas(cTempMemAlignment) uint8 mBuffer[taSize];
+	};
+}
 

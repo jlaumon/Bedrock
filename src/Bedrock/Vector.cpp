@@ -70,6 +70,8 @@ REGISTER_TEST("Vector")
 
 REGISTER_TEST("TempVector")
 {
+	TEST_INIT_TEMP_MEMORY(1_KiB);
+
 	TempVector<int> test = { 1, 2, 3, 4 };
 
 	TEST_TRUE(gIsTempMem(test.Begin()));

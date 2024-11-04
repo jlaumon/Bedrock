@@ -21,10 +21,10 @@ void gMemFree(MemBlock inMemory);
 
 
 // Initialize temporary memory for the current thread.
-void gThreadInitTempMemory(int64 inTotalSize);
+void gThreadInitTempMemory(MemBlock inMemory);
 
 // De-initialize temporary memory for the current thread.
-void gThreadExitTempMemory();
+[[nodiscard]] MemBlock gThreadExitTempMemory();
 
 // Allocate stack-like temporary memory.
 inline MemBlock gTempMemAlloc(int64 inSize);
