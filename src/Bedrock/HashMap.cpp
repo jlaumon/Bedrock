@@ -40,7 +40,7 @@ REGISTER_TEST("HashMap")
 template <template <typename> typename taAllocator>
 static void sLargeHashMapTest()
 {
-	HashMap<int, int, taAllocator> map;
+	HashMap<int, int, Hash<int>, taAllocator> map;
 
 	constexpr int cMapSize         = 100000;
 	constexpr int cInitialRandSeed = 42;

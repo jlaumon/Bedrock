@@ -28,11 +28,42 @@ inline uint64 gHash(const void* inPtr, int inSize, uint64 inSeed = cHashSeed)
 	return Details::Rapidhash::rapidhash_withSeed(inPtr, inSize, inSeed);
 }
 
+template <typename taType> struct Hash;
 
-inline uint64 gHash(uint64 inValue, uint64 inSeed = cHashSeed)
-{
-	return gHash(&inValue, sizeof(inValue), inSeed);
-}
+// True if this Hash type supports hashing multiple equivalent types.
+// eg. Hash<StringView> is transparent and allows hashing const char* as well.
+template <class taHash>
+concept cIsTransparent = requires { typename taHash::IsTransparent; };
+
+#define DECLARE_HASH(type)                                       \
+	inline uint64 gHash(type inValue, uint64 inSeed = cHashSeed) \
+	{                                                            \
+		return gHash(&inValue, sizeof(inValue), inSeed);         \
+	}                                                            \
+                                                                 \
+	template <> struct Hash<type>                                \
+	{                                                            \
+		uint64 operator()(type inValue) const                    \
+		{                                                        \
+			return gHash(inValue);                               \
+		}                                                        \
+	};
+
+
+DECLARE_HASH(int8)
+DECLARE_HASH(uint8)
+DECLARE_HASH(int16)
+DECLARE_HASH(uint16)
+DECLARE_HASH(int32)
+DECLARE_HASH(uint32)
+DECLARE_HASH(int64)
+DECLARE_HASH(uint64)
+DECLARE_HASH(int)
+
+
+
+
+
 
 
 

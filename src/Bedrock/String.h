@@ -73,6 +73,9 @@ using String     = StringBase<Allocator<char>>;
 using TempString = StringBase<TempAllocator<char>>;
 
 
+template <> struct Hash<String> : Hash<StringView> {};
+
+
 template <class taAllocator>
 StringBase<taAllocator>::~StringBase()
 {

@@ -33,8 +33,10 @@ namespace Details
 }
 
 
-template <typename taKey, typename taValue, template <typename> typename taAllocator = Allocator>
-struct HashMap
+
+
+template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
+struct HashMap : taHash
 {
 	struct KeyValue
 	{
@@ -117,20 +119,80 @@ struct HashMap
 			// Find the right bucket index for this key.
 			// Note: We know the key is not already present so we can skip some compares.
 			bool key_may_be_found = false;
-			auto [bucket_index, distance_and_fingerprint, _] = FindInternal(key_value.mKey, key_may_be_found);
+			auto [bucket_index, distance_and_fingerprint, _] = FindBucket(key_value.mKey, key_may_be_found);
 
 			// Insert the bucket.
 			InsertBucket({ distance_and_fingerprint, mKeyValues.GetIndex(key_value) }, bucket_index);
 		}
 	}
 
+
 	Iter Find(const taKey& inKey)
+	{
+		return FindInternal(inKey);
+	}
+
+
+	template <typename taOtherKey>
+	requires cIsTransparent<taHash>
+	Iter Find(const taOtherKey& inKey)
+	{
+		return FindInternal(inKey);
+	}
+
+
+	InsertResult Insert(const taKey& inKey, const taValue& inValue)
+	{
+		return EmplaceInternal(inKey, inValue);
+	}
+
+
+	template <class... taArgs>
+	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal(gMove(ioKey), gForward<taArgs>(ioArgs)...);
+	}
+
+
+	template <class... taArgs>
+	InsertResult Emplace(const taKey& inKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal(inKey, gForward<taArgs>(ioArgs)...);
+	}
+
+
+	bool Erase(const taKey& inKey)
+	{
+		return EraseInternal(inKey);
+	}
+
+
+	template <typename taOtherKey>
+	requires cIsTransparent<taHash>
+	bool Erase(const taOtherKey& inKey)
+	{
+		return EraseInternal(inKey);
+	}
+
+private:
+	using Bucket = Details::HashMapBucket;
+
+	int GetBucketSizeMask() const
+	{
+		gAssert(!mBuckets.Empty());
+
+		// The number of buckets is a power of 2, so we can use a bitwise and as a faster modulo.
+		return mBuckets.Size() - 1;
+	}
+
+	template <typename taOtherKey>
+	Iter FindInternal(const taOtherKey& inKey)
 	{
 		if (Empty()) [[unlikely]]
 			return End();
 
 		// Try to find the key.
-		auto [bucket_index, _, found] = FindInternal(inKey);
+		auto [bucket_index, _, found] = FindBucket(inKey);
 
 		// If it was found, return an iterator.
 		if (found)
@@ -140,14 +202,14 @@ struct HashMap
 		return End();
 	}
 
-
-	InsertResult Insert(const taKey& inKey, const taValue& inValue)
+	template <typename taOtherKey, class... taArgs>
+	InsertResult EmplaceInternal(taOtherKey&& ioKey, taArgs&&... ioArgs)
 	{
 		if (IsFull()) [[unlikely]]
 			Grow();
 
 		// Try to find the key.
-		auto [bucket_index, distance_and_fingerprint, found] = FindInternal(inKey);
+		auto [bucket_index, distance_and_fingerprint, found] = FindBucket(ioKey);
 
 		if (found)
 		{
@@ -157,7 +219,7 @@ struct HashMap
 		}
 
 		// Key does not exist, add it.
-		mKeyValues.EmplaceBack(inKey, inValue);
+		mKeyValues.EmplaceBack(gForward<taOtherKey>(ioKey), gForward<taArgs>(ioArgs)...);
 
 		// Insert a new bucket for it.
 		Bucket new_bucket = { distance_and_fingerprint, mKeyValues.Size() - 1 };
@@ -167,13 +229,15 @@ struct HashMap
 		return { key_value.mKey, key_value.mValue, EInsertResult::Added };
 	}
 
-	bool Erase(const taKey& inKey)
+
+	template <typename taOtherKey>
+	bool EraseInternal(const taOtherKey& inKey)
 	{
 		if (Empty()) [[unlikely]]
 			return false;
 
 		// Try to find the key.
-		auto [bucket_index, distance_and_fingerprint, found] = FindInternal(inKey);
+		auto [bucket_index, distance_and_fingerprint, found] = FindBucket(inKey);
 
 		if (found == false)
 			return false; // Key does not exist.
@@ -188,7 +252,7 @@ struct HashMap
 			return true;
 
 		// Otherwise we need to find the bucket of the key we moved to update its index.
-		const uint64 hash         = gHash(mKeyValues.Back().mKey);
+		const uint64 hash         = taHash::operator()(mKeyValues.Back().mKey);
 		const int    buckets_mask = GetBucketSizeMask();
 		bucket_index              = (int)hash & buckets_mask;
 
@@ -210,28 +274,19 @@ struct HashMap
 		return true;
 	}
 
-private:
-	using Bucket = Details::HashMapBucket;
-
-	int GetBucketSizeMask() const
-	{
-		gAssert(!mBuckets.Empty());
-
-		// The number of buckets is a power of 2, so we can use a bitwise and as a faster modulo.
-		return mBuckets.Size() - 1;
-	}
-
-	struct FindResult
+	
+	struct FindBucketResult
 	{
 		int    mBucketIndex;			// The bucket where the key is or should be inserted.
 		uint32 mDistanceAndFingerprint; // The distance and fingerprint of the key for this bucket.
-		bool   mFound;					// True if the key was found at this bucket.
+		bool   mFoundKey;				// True if the key was found at this bucket.
 	};
 
-	FindResult FindInternal(const taKey& inKey, bool inKeyMayBeFound = true) const
+	template <typename taOtherKey>
+	FindBucketResult FindBucket(const taOtherKey& inKey, bool inKeyMayBeFound = true) const
 	{
 		// Calculate the hash.
-		const uint64 hash         = gHash(inKey);
+		const uint64 hash = taHash::operator()(inKey);
 
 		// Get the ideal bucket index.
 		const int buckets_mask = GetBucketSizeMask();
@@ -297,9 +352,8 @@ private:
 		}
 	}
 
-	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues;	// Key-value pairs stored in a dense array.
-
-	Vector<Bucket, taAllocator<Bucket>> mBuckets;
+	Vector<KeyValue, taAllocator<KeyValue>>                  mKeyValues; // Key-value pairs stored in a dense array.
+	Vector<Bucket, taAllocator<Bucket>>                      mBuckets;
 };
 
 

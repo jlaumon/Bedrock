@@ -155,3 +155,13 @@ constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 
 
 uint64 gHash(StringView inValue);
+
+
+template <>
+struct Hash<StringView>
+{
+	using IsTransparent = void;
+
+	uint64 operator()(StringView inStr) const { return gHash(inStr); }
+	uint64 operator()(const char* inStr) const { return gHash(StringView(inStr)); }
+};

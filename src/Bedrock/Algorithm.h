@@ -23,12 +23,17 @@ template <typename taType>
 
 // Equivalent to std::swap
 template <typename taType>
-void gSwap(taType& ioA, taType& ioB)
+constexpr void gSwap(taType& ioA, taType& ioB)
 {
 	taType temp = gMove(ioA);
 	ioA = gMove(ioB);
 	ioB = gMove(temp);
 }
+
+
+// Forward declaration of the Hash struct.
+// Equivalent to std::hash.
+template <typename taType> struct Hash;
 
 
 // Minimal reverse iterator.
