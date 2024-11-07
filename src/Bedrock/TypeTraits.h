@@ -16,6 +16,9 @@ template<class T> constexpr bool cIsMoveConstructible = __is_constructible(T, T)
 // Equivalent to std::is_move_assignable
 template<class T> constexpr bool cIsMoveAssignable = __is_assignable(T&, T&&);
 
+// Equivalent to std::is_assignable
+template<class T, class U> constexpr bool cIsAssignable = __is_assignable(T, U);
+
 // Equivalent to std::is_convertible
 template<class taFrom, class taTo> constexpr bool cIsConvertible = __is_convertible_to(taFrom, taTo);
 

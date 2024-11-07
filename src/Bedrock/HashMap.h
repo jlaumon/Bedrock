@@ -133,33 +133,90 @@ struct HashMap : taHash
 	}
 
 
-	template <typename taOtherKey>
+	template <typename taAltKey>
 	requires cIsTransparent<taHash>
-	Iter Find(const taOtherKey& inKey)
+	Iter Find(const taAltKey& inKey)
 	{
 		return FindInternal(inKey);
 	}
 
-
-	InsertResult Insert(const taKey& inKey, const taValue& inValue)
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(const taKey& inKey, taAltValue&& ioValue)
 	{
-		return EmplaceInternal(inKey, inValue);
+		return EmplaceInternal(EReplaceExisting::No, inKey, gForward<taAltValue>(ioValue));
 	}
 
-
-	template <class... taArgs>
-	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(taKey&& ioKey, taAltValue&& ioValue)
 	{
-		return EmplaceInternal(gMove(ioKey), gForward<taArgs>(ioArgs)...);
+		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey), gForward<taAltValue>(ioValue));
 	}
 
+	template <typename taAltKey, typename taAltValue>
+	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(taAltKey&& ioKey, taAltValue&& ioValue)
+	{
+		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+	}
 
-	template <class... taArgs>
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(const taKey& inKey, taAltValue&& ioValue)
+	{
+		return EmplaceInternal(EReplaceExisting::Yes, inKey, gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(taKey&& ioKey, taAltValue&& ioValue)
+	{
+		return EmplaceInternal(EReplaceExisting::Yes, gMove(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltKey, typename taAltValue>
+	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(taAltKey&& ioKey, taAltValue&& ioValue)
+	{
+		return EmplaceInternal(EReplaceExisting::Yes, gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	template <typename... taArgs>
 	InsertResult Emplace(const taKey& inKey, taArgs&&... ioArgs)
 	{
-		return EmplaceInternal(inKey, gForward<taArgs>(ioArgs)...);
+		return EmplaceInternal(EReplaceExisting::No, inKey, gForward<taArgs>(ioArgs)...);
 	}
 
+	template <typename... taArgs>
+	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey), gForward<taArgs>(ioArgs)...);
+	}
+
+	template <typename taAltKey, typename... taArgs>
+	requires cIsTransparent<taHash>
+	InsertResult Emplace(taAltKey&& ioKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
+	}
+
+	taValue& operator[](const taKey& inKey)
+	{
+		return EmplaceInternal(EReplaceExisting::No, inKey).mValue;
+	}
+
+	taValue& operator[](taKey&& ioKey)
+	{
+		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey)).mValue;
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	taValue& operator[](taAltKey&& ioKey)
+	{
+		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey)).mValue;
+	}
 
 	bool Erase(const taKey& inKey)
 	{
@@ -167,9 +224,9 @@ struct HashMap : taHash
 	}
 
 
-	template <typename taOtherKey>
+	template <typename taAltKey>
 	requires cIsTransparent<taHash>
-	bool Erase(const taOtherKey& inKey)
+	bool Erase(const taAltKey& inKey)
 	{
 		return EraseInternal(inKey);
 	}
@@ -185,8 +242,8 @@ private:
 		return mBuckets.Size() - 1;
 	}
 
-	template <typename taOtherKey>
-	Iter FindInternal(const taOtherKey& inKey)
+	template <typename taAltKey>
+	Iter FindInternal(const taAltKey& inKey)
 	{
 		if (Empty()) [[unlikely]]
 			return End();
@@ -202,8 +259,14 @@ private:
 		return End();
 	}
 
-	template <typename taOtherKey, class... taArgs>
-	InsertResult EmplaceInternal(taOtherKey&& ioKey, taArgs&&... ioArgs)
+	enum class EReplaceExisting
+	{
+		No,
+		Yes,
+	};
+
+	template <typename taAltKey, typename... taArgs>
+	InsertResult EmplaceInternal(EReplaceExisting inReplaceExisting, taAltKey&& ioKey, taArgs&&... ioArgs)
 	{
 		if (IsFull()) [[unlikely]]
 			Grow();
@@ -215,11 +278,22 @@ private:
 		{
 			// Key already exist.
 			KeyValue& key_value = mKeyValues[mBuckets[bucket_index].mKeyValueIndex];
-			return { key_value.mKey, key_value.mValue, EInsertResult::Found };
+
+			if (inReplaceExisting == EReplaceExisting::No)
+			{
+				// Return the existing value.
+				return { key_value.mKey, key_value.mValue, EInsertResult::Found };
+			}
+			else
+			{
+				// Replace the existing value.
+				key_value.mValue = { gForward<taArgs>(ioArgs)... };
+				return { key_value.mKey, key_value.mValue, EInsertResult::Replaced };
+			}
 		}
 
 		// Key does not exist, add it.
-		mKeyValues.EmplaceBack(gForward<taOtherKey>(ioKey), gForward<taArgs>(ioArgs)...);
+		mKeyValues.EmplaceBack(gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
 
 		// Insert a new bucket for it.
 		Bucket new_bucket = { distance_and_fingerprint, mKeyValues.Size() - 1 };
@@ -230,8 +304,8 @@ private:
 	}
 
 
-	template <typename taOtherKey>
-	bool EraseInternal(const taOtherKey& inKey)
+	template <typename taAltKey>
+	bool EraseInternal(const taAltKey& inKey)
 	{
 		if (Empty()) [[unlikely]]
 			return false;
@@ -282,8 +356,8 @@ private:
 		bool   mFoundKey;				// True if the key was found at this bucket.
 	};
 
-	template <typename taOtherKey>
-	FindBucketResult FindBucket(const taOtherKey& inKey, bool inKeyMayBeFound = true) const
+	template <typename taAltKey>
+	FindBucketResult FindBucket(const taAltKey& inKey, bool inKeyMayBeFound = true) const
 	{
 		// Calculate the hash.
 		const uint64 hash = taHash::operator()(inKey);
@@ -352,8 +426,8 @@ private:
 		}
 	}
 
-	Vector<KeyValue, taAllocator<KeyValue>>                  mKeyValues; // Key-value pairs stored in a dense array.
-	Vector<Bucket, taAllocator<Bucket>>                      mBuckets;
+	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues; // Key-value pairs stored in a dense array.
+	Vector<Bucket, taAllocator<Bucket>>     mBuckets;
 };
 
 

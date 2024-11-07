@@ -10,21 +10,27 @@ REGISTER_TEST("HashMap")
 	HashMap<String, String> map;
 	TEST_TRUE(map.Insert("bread", "butter").mResult == EInsertResult::Added);
 	TEST_TRUE(map.Insert("bread", "jam").mResult == EInsertResult::Found);
-	TEST_TRUE(map.Insert("toast", "rubbish").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("baguette", "cheese").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("bagel", "not sure").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("bun", "no").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("pretzel", "fine").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("brioche", "jam").mResult == EInsertResult::Added);
-	TEST_TRUE(map.Insert("croissant", "chocolate").mResult == EInsertResult::Added);
+	map["toast"] = "rubbish";
+	String cheese("cheese");
+	TEST_TRUE(map.Insert(StringView("baguette"), cheese).mResult == EInsertResult::Added);
+	String bagel("bagel");
+	TEST_TRUE(map.Insert(bagel, "not sure").mResult == EInsertResult::Added);
+	TEST_TRUE(map.Emplace("bun", "no").mResult == EInsertResult::Added);
+	TEST_TRUE(map.Emplace("pretzel", "fine").mResult == EInsertResult::Added);
+	String brioche("brioche");
+	TEST_TRUE(map.Emplace(brioche, "jam").mResult == EInsertResult::Added);
+	TEST_TRUE(map.InsertOrAssign(brioche, "peanut butter").mResult == EInsertResult::Replaced);
+	TEST_TRUE(map.InsertOrAssign("croissant", "chocolate").mResult == EInsertResult::Added);
 
 	TEST_TRUE(map.Find("bread")->mValue == "butter");
 	TEST_TRUE(map.Find("toast")->mValue == "rubbish");
-	TEST_TRUE(map.Find("baguette")->mValue == "cheese");
-	TEST_TRUE(map.Find("bagel")->mValue == "not sure");
-	TEST_TRUE(map.Find("bun")->mValue == "no");
+	TEST_TRUE(map.Find(StringView("baguette"))->mValue == "cheese");
+	TEST_TRUE(map.Find(bagel)->mValue == "not sure");
+	TEST_TRUE(map["bun"] == "no");
+	map["bun"] = "burger";
+	TEST_TRUE(map.Find("bun")->mValue == "burger");
 	TEST_TRUE(map.Find("pretzel")->mValue == "fine");
-	TEST_TRUE(map.Find("brioche")->mValue == "jam");
+	TEST_TRUE(map.Find("brioche")->mValue == "peanut butter");
 	TEST_TRUE(map.Find("croissant")->mValue == "chocolate");
 
 	TEST_TRUE(map.Insert("ciabatta", "is baguette").mResult == EInsertResult::Added);
@@ -32,6 +38,7 @@ REGISTER_TEST("HashMap")
 	TEST_TRUE(map.Find("broad") == map.End());
 
 	TEST_TRUE(map.Erase("ciabatta"));
+	TEST_TRUE(map.Find("ciabatta") == map.End());
 	TEST_TRUE(map.Find("pain")->mValue == "perdu");
 	TEST_FALSE(map.Erase("broad"));
 };
