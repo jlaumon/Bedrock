@@ -71,6 +71,16 @@ namespace Details
 }
 template<class T> constexpr bool cIsLValueReference = Details::IsConst<T>::cValue;
 
+// Equivalent to std::is_void
+template<class T> constexpr bool cIsVoid = cIsSame<void, RemoveCV<T>>;
+
+// Equivalent to std::conditional
+namespace Details
+{
+	template<bool, class T, class F> struct Conditional { using Type = T; };
+	template<class T, class F> struct Conditional<false, T, F> { using Type = F; };
+}
+template<bool B, class T, class F> using Conditional = typename Details::Conditional<B, T, F>::Type;
 
 // True if the elements of a container are contiguous in memory.
 // Each contiguous container needs to add its specialization.

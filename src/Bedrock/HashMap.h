@@ -8,10 +8,11 @@
 
 enum class EInsertResult : int8
 {
-	Found,
-	Added,
-	Replaced
+	Found,		// The key was found.
+	Added,		// The key was added to the map.
+	Replaced	// The key was found in the map, and the value was replaced.
 };
+
 
 namespace Details
 {
@@ -33,26 +34,49 @@ namespace Details
 }
 
 
+template <typename taKey, typename taValue>
+struct KeyValue
+{
+	taKey	mKey;
+	taValue mValue;
+};
+
+
+template <typename taKey, typename taValue>
+struct MapInsertResult
+{
+	MapInsertResult(KeyValue<taKey, taValue>& ioKeyValue, EInsertResult inResult)
+		: mKey(ioKeyValue.mKey), mValue(ioKeyValue.mValue), mResult(inResult)
+	{}
+
+	const taKey&  mKey;
+	taValue&      mValue;
+	EInsertResult mResult;
+};
+
+template <typename taKey>
+struct SetInsertResult
+{
+	SetInsertResult(const taKey& inKey, EInsertResult inResult)
+		: mKey(inKey), mResult(inResult)
+	{}
+
+	const taKey&  mKey;
+	EInsertResult mResult;
+};
 
 
 template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
 struct HashMap : taHash
 {
-	struct KeyValue
-	{
-		taKey	mKey;
-		taValue mValue;
-	};
+	static constexpr bool cIsMap = !cIsVoid<taValue>;
+	static constexpr bool cIsSet =  cIsVoid<taValue>;
 
-	struct InsertResult
-	{
-		const taKey&  mKey;
-		taValue&      mValue;
-		EInsertResult mResult;
-	};
+	using KeyValue = Conditional<cIsMap, KeyValue<taKey, taValue>, taKey>;
+	using InsertResult = Conditional<cIsMap, MapInsertResult<taKey, taValue>, SetInsertResult<taKey>>;
 
 	using ConstIter = const KeyValue*;
-	using Iter = const KeyValue*;
+	using Iter = const KeyValue*; // FIXME Iter should not allow modifying keys
 
 
 	HashMap() = default;
@@ -119,7 +143,7 @@ struct HashMap : taHash
 			// Find the right bucket index for this key.
 			// Note: We know the key is not already present so we can skip some compares.
 			bool key_may_be_found = false;
-			auto [bucket_index, distance_and_fingerprint, _] = FindBucket(key_value.mKey, key_may_be_found);
+			auto [bucket_index, distance_and_fingerprint, _] = FindBucket(GetKey(key_value), key_may_be_found);
 
 			// Insert the bucket.
 			InsertBucket({ distance_and_fingerprint, mKeyValues.GetIndex(key_value) }, bucket_index);
@@ -127,95 +151,144 @@ struct HashMap : taHash
 	}
 
 
-	Iter Find(const taKey& inKey)
+	Iter Find(const taKey& inKey) requires cIsMap
 	{
 		return FindInternal(inKey);
 	}
-
 
 	template <typename taAltKey>
 	requires cIsTransparent<taHash>
-	Iter Find(const taAltKey& inKey)
+	Iter Find(const taAltKey& inKey) requires cIsMap
 	{
 		return FindInternal(inKey);
 	}
 
+
+	ConstIter Find(const taKey& inKey) const
+	{
+		return FindInternal(inKey);
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	ConstIter Find(const taAltKey& inKey) const
+	{
+		return FindInternal(inKey);
+	}
+
+
+
+	bool Contains(const taKey& inKey) const
+	{
+		return FindInternal(inKey) != End();
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	bool Contains(const taAltKey& inKey) const
+	{
+		return FindInternal(inKey) != End();
+	}
+
+
+
 	template <typename taAltValue>
 	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(const taKey& inKey, taAltValue&& ioValue)
+	InsertResult Insert(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::No, inKey, gForward<taAltValue>(ioValue));
+		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taAltValue>(ioValue));
 	}
 
 	template <typename taAltValue>
 	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(taKey&& ioKey, taAltValue&& ioValue)
+	InsertResult Insert(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey), gForward<taAltValue>(ioValue));
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taAltValue>(ioValue));
 	}
 
 	template <typename taAltKey, typename taAltValue>
 	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(taAltKey&& ioKey, taAltValue&& ioValue)
+	InsertResult Insert(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+
+	InsertResult Insert(const taKey& inKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(inKey);
+	}
+
+	InsertResult Insert(taKey&& ioKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey));
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	InsertResult Insert(taAltKey&& ioKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey));
+	}
+
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::Yes>(inKey, gForward<taAltValue>(ioValue));
 	}
 
 	template <typename taAltValue>
 	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(const taKey& inKey, taAltValue&& ioValue)
+	InsertResult InsertOrAssign(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::Yes, inKey, gForward<taAltValue>(ioValue));
-	}
-
-	template <typename taAltValue>
-	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(taKey&& ioKey, taAltValue&& ioValue)
-	{
-		return EmplaceInternal(EReplaceExisting::Yes, gMove(ioKey), gForward<taAltValue>(ioValue));
+		return EmplaceInternal<EReplaceExisting::Yes>(gMove(ioKey), gForward<taAltValue>(ioValue));
 	}
 
 	template <typename taAltKey, typename taAltValue>
 	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(taAltKey&& ioKey, taAltValue&& ioValue)
+	InsertResult InsertOrAssign(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::Yes, gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+		return EmplaceInternal<EReplaceExisting::Yes>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
 	}
 
 	template <typename... taArgs>
 	InsertResult Emplace(const taKey& inKey, taArgs&&... ioArgs)
 	{
-		return EmplaceInternal(EReplaceExisting::No, inKey, gForward<taArgs>(ioArgs)...);
+		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taArgs>(ioArgs)...);
 	}
 
 	template <typename... taArgs>
 	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
 	{
-		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey), gForward<taArgs>(ioArgs)...);
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taArgs>(ioArgs)...);
 	}
 
 	template <typename taAltKey, typename... taArgs>
 	requires cIsTransparent<taHash>
 	InsertResult Emplace(taAltKey&& ioKey, taArgs&&... ioArgs)
 	{
-		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
 	}
 
-	taValue& operator[](const taKey& inKey)
+	template<class T = taValue>
+	T& operator[](const taKey& inKey) requires cIsMap
 	{
-		return EmplaceInternal(EReplaceExisting::No, inKey).mValue;
+		return EmplaceInternal<EReplaceExisting::No>(inKey).mValue;
 	}
 
-	taValue& operator[](taKey&& ioKey)
+	template<class T = taValue>
+	T& operator[](taKey&& ioKey)
 	{
-		return EmplaceInternal(EReplaceExisting::No, gMove(ioKey)).mValue;
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey)).mValue;
 	}
 
-	template <typename taAltKey>
+	template <typename taAltKey, class T = taValue>
 	requires cIsTransparent<taHash>
-	taValue& operator[](taAltKey&& ioKey)
+	T& operator[](taAltKey&& ioKey) requires cIsMap 
 	{
-		return EmplaceInternal(EReplaceExisting::No, gForward<taAltKey>(ioKey)).mValue;
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey)).mValue;
 	}
 
 	bool Erase(const taKey& inKey)
@@ -242,8 +315,16 @@ private:
 		return mBuckets.Size() - 1;
 	}
 
+	const taKey& GetKey(const KeyValue& ioKeyValue) const
+	{
+		if constexpr (cIsMap)
+			return ioKeyValue.mKey;
+		else
+			return ioKeyValue;
+	}
+
 	template <typename taAltKey>
-	Iter FindInternal(const taAltKey& inKey)
+	Iter FindInternal(const taAltKey& inKey) const
 	{
 		if (Empty()) [[unlikely]]
 			return End();
@@ -265,8 +346,8 @@ private:
 		Yes,
 	};
 
-	template <typename taAltKey, typename... taArgs>
-	InsertResult EmplaceInternal(EReplaceExisting inReplaceExisting, taAltKey&& ioKey, taArgs&&... ioArgs)
+	template <EReplaceExisting taReplaceExisting, typename taAltKey, typename... taArgs>
+	InsertResult EmplaceInternal(taAltKey&& ioKey, taArgs&&... ioArgs)
 	{
 		if (IsFull()) [[unlikely]]
 			Grow();
@@ -279,16 +360,16 @@ private:
 			// Key already exist.
 			KeyValue& key_value = mKeyValues[mBuckets[bucket_index].mKeyValueIndex];
 
-			if (inReplaceExisting == EReplaceExisting::No)
+			if constexpr (taReplaceExisting == EReplaceExisting::No || !cIsMap)
 			{
 				// Return the existing value.
-				return { key_value.mKey, key_value.mValue, EInsertResult::Found };
+				return { key_value, EInsertResult::Found };
 			}
 			else
 			{
 				// Replace the existing value.
 				key_value.mValue = { gForward<taArgs>(ioArgs)... };
-				return { key_value.mKey, key_value.mValue, EInsertResult::Replaced };
+				return { key_value, EInsertResult::Replaced };
 			}
 		}
 
@@ -300,7 +381,7 @@ private:
 		InsertBucket(new_bucket, bucket_index);
 
 		KeyValue& key_value = mKeyValues.Back();
-		return { key_value.mKey, key_value.mValue, EInsertResult::Added };
+		return { key_value, EInsertResult::Added };
 	}
 
 
@@ -316,26 +397,35 @@ private:
 		if (found == false)
 			return false; // Key does not exist.
 
-		// Swap the key-value to erase with the last one, to minimize the number of moves.
 		int key_value_index_to_erase = mBuckets[bucket_index].mKeyValueIndex;
-		int key_value_index_swapped  = mBuckets.Back().mKeyValueIndex;
-		mKeyValues.SwapErase(key_value_index_to_erase);
 
-		// If the erased key was actually the last one, nothing else to do.
-		if (key_value_index_to_erase == mKeyValues.Size())
+		// Remove the corresponding bucket.
+		EraseBucket(bucket_index);
+
+		// If the key to erase is the last one, pop it and we're done.
+		if (key_value_index_to_erase == mKeyValues.Size() - 1)
+		{
+			mKeyValues.PopBack();
 			return true;
+		}
 
-		// Otherwise we need to find the bucket of the key we moved to update its index.
-		const uint64 hash         = taHash::operator()(mKeyValues.Back().mKey);
+		// Otherwise swap it with the last one, to minimize the number of moves.
+		int last_key_value_index = mKeyValues.Size() - 1;
+
+		// We also need to find the bucket of the key we will swap to update its index.
+		const uint64 hash         = taHash::operator()(GetKey(mKeyValues.Back()));
 		const int    buckets_mask = GetBucketSizeMask();
 		bucket_index              = (int)hash & buckets_mask;
 
-		// No need to compare fingerprints and keys, it's faster to just compare the key-value index. We know it will be found.
 		while (true)
 		{
 			Bucket& bucket = mBuckets[bucket_index];
-			if (bucket.mKeyValueIndex == key_value_index_swapped)
+
+			// No need to compare fingerprints and keys, it's faster to just compare the key-value index. We know it will be found.
+			if (bucket.mKeyValueIndex == last_key_value_index)
 			{
+				gAssert(bucket.mDistanceAndFingerprint != 0); // We should never encounter an empty bucket.
+
 				// Found it, update the index.
 				bucket.mKeyValueIndex = key_value_index_to_erase;
 				break;
@@ -344,6 +434,9 @@ private:
 			// Go to the next bucket.
 			bucket_index = (bucket_index + 1) & buckets_mask;
 		}
+
+		// Swap-erase the key-value.
+		mKeyValues.SwapErase(key_value_index_to_erase);
 
 		return true;
 	}
@@ -387,7 +480,7 @@ private:
 			if (inKeyMayBeFound && bucket.mDistanceAndFingerprint == distance_and_fingerprint) [[likely]]
 			{
 				// Then check if the key is equal too.
-				if (mKeyValues[bucket.mKeyValueIndex].mKey == inKey) [[likely]]
+				if (GetKey(mKeyValues[bucket.mKeyValueIndex]) == inKey) [[likely]]
 				{
 					// Found it.
 					return { bucket_index, distance_and_fingerprint, true };
@@ -406,6 +499,7 @@ private:
 		}
 	}
 
+	// Insert a bucket at this index and move the existing buckets to the right.
 	void InsertBucket(Bucket inBucket, int inIndex)
 	{
 		Bucket    bucket       = inBucket;
@@ -426,9 +520,37 @@ private:
 		}
 	}
 
+	// Erase the bucket at this index and move the following buckets to the left if needed.
+	void EraseBucket(int inIndex)
+	{
+		int       bucket_index = inIndex;
+		const int buckets_mask = GetBucketSizeMask();
+
+		while (true)
+		{
+			int    next_bucket_index = (bucket_index + 1) & buckets_mask;
+			Bucket next_bucket       = mBuckets[next_bucket_index];
+
+			// The next bucket only needs to be moved if has a distance >= 2 (ie. it's not in its ideal position).
+			// Note: empty buckets have a distance of 0, so they also break the loop here.
+			if (next_bucket.mDistanceAndFingerprint < 2 * Bucket::cDistanceIncrement)
+				break;
+
+			// Decrement the distance of the bucket, and move it to the previous index.
+			next_bucket.mDistanceAndFingerprint -= Bucket::cDistanceIncrement;
+			mBuckets[bucket_index] = next_bucket;
+
+			bucket_index = next_bucket_index;
+		}
+
+		// Last bucket becomes empty.
+		mBuckets[bucket_index] = {};
+	}
+
 	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues; // Key-value pairs stored in a dense array.
 	Vector<Bucket, taAllocator<Bucket>>     mBuckets;
 };
 
 
-
+template <typename taKey, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
+using HashSet = HashMap<taKey, void, taHash, taAllocator>;

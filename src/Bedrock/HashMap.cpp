@@ -41,6 +41,50 @@ REGISTER_TEST("HashMap")
 	TEST_TRUE(map.Find("ciabatta") == map.End());
 	TEST_TRUE(map.Find("pain")->mValue == "perdu");
 	TEST_FALSE(map.Erase("broad"));
+
+	TEST_TRUE(map.Erase("bread"));
+	TEST_TRUE(map.Erase("toast"));
+	TEST_TRUE(map.Erase("pretzel"));
+	TEST_TRUE(map.Erase("brioche"));
+	TEST_TRUE(map.Erase("croissant"));
+
+};
+
+
+REGISTER_TEST("HashSet")
+{
+	HashSet<String> set;
+
+	TEST_TRUE(set.Insert("bread").mResult == EInsertResult::Added);
+	TEST_TRUE(set.Insert("bread").mResult == EInsertResult::Found);
+	TEST_TRUE(set.Insert(StringView("baguette")).mResult == EInsertResult::Added);
+	String bagel("bagel");
+	TEST_TRUE(set.Insert(bagel).mResult == EInsertResult::Added);
+	TEST_TRUE(set.Emplace("bun").mResult == EInsertResult::Added);
+	TEST_TRUE(set.Emplace("pretzel").mResult == EInsertResult::Added);
+	String brioche("brioche");
+	TEST_TRUE(set.Emplace(brioche).mResult == EInsertResult::Added);
+
+	TEST_TRUE(set.Contains("bread"));
+	TEST_TRUE(set.Contains(StringView("baguette")));
+	TEST_TRUE(set.Contains(bagel));
+	TEST_TRUE(set.Contains("bun"));
+	TEST_TRUE(set.Contains("pretzel"));
+	TEST_TRUE(set.Contains("brioche"));
+
+	TEST_TRUE(set.Insert("ciabatta").mResult == EInsertResult::Added);
+	TEST_TRUE(set.Insert("pain").mResult == EInsertResult::Added);
+	TEST_TRUE(set.Find("broad") == set.End());
+
+	TEST_TRUE(set.Erase("ciabatta"));
+	TEST_TRUE(set.Find("ciabatta") == set.End());
+	TEST_TRUE(set.Contains("pain"));
+	TEST_FALSE(set.Erase("broad"));
+
+	TEST_TRUE(set.Erase("pretzel"));
+	TEST_TRUE(set.Erase("bun"));
+	TEST_TRUE(set.Erase("brioche"));
+	TEST_TRUE(set.Erase("baguette"));
 };
 
 
@@ -49,12 +93,12 @@ static void sLargeHashMapTest()
 {
 	HashMap<int, int, Hash<int>, taAllocator> map;
 
-	constexpr int cMapSize         = 100000;
+	constexpr int cSize         = 100000;
 	constexpr int cInitialRandSeed = 42;
 
 	// Fill a map with lots of random values.
 	int rand_seed = cInitialRandSeed;
-	for (int i = 0; i < cMapSize; i++)
+	for (int i = 0; i < cSize; i++)
 	{
 		rand_seed = gRand32(rand_seed);
 		map.Insert(i, rand_seed);
@@ -62,13 +106,19 @@ static void sLargeHashMapTest()
 
 	// Check that all the values are found.
 	rand_seed = cInitialRandSeed;
-	for (int i = 0; i < cMapSize; i++)
+	for (int i = 0; i < cSize; i++)
 	{
 		rand_seed = gRand32(rand_seed);
 		auto iter = map.Find(i);
 		TEST_TRUE(iter != map.End());
 		TEST_TRUE(iter->mKey == i);
 		TEST_TRUE(iter->mValue == rand_seed);
+	}
+
+	// Remove all the values.
+	for (int i = 0; i < cSize; i++)
+	{
+		TEST_TRUE(map.Erase(i));
 	}
 }
 
@@ -84,4 +134,54 @@ REGISTER_TEST("Large Temp HashMap")
 	TEST_INIT_TEMP_MEMORY(100_KiB);
 
 	sLargeHashMapTest<TempAllocator>();
+};
+
+
+template <template <typename> typename taAllocator>
+static void sLargeHashSetTest()
+{
+	HashSet<int, Hash<int>, taAllocator> set;
+
+	constexpr int cSize         = 100000;
+	constexpr int cInitialRandSeed = 42;
+
+	// Fill a map with lots of random values.
+	int rand_value = cInitialRandSeed;
+	for (int i = 0; i < cSize; i++)
+	{
+		rand_value = gRand32(rand_value);
+		set.Insert(rand_value);
+	}
+
+	// Check that all the values are found.
+	rand_value = cInitialRandSeed;
+	for (int i = 0; i < cSize; i++)
+	{
+		rand_value = gRand32(rand_value);
+		auto iter = set.Find(rand_value);
+		TEST_TRUE(iter != set.End());
+		TEST_TRUE(*iter == rand_value);
+	}
+
+	// Remove all the values.
+	rand_value = cInitialRandSeed;
+	for (int i = 0; i < cSize; i++)
+	{
+		rand_value = gRand32(rand_value);
+		TEST_TRUE(set.Erase(rand_value));
+	}
+}
+
+
+REGISTER_TEST("Large HashSet")
+{
+	sLargeHashSetTest<Allocator>();
+};
+
+
+REGISTER_TEST("Large Temp HashSet")
+{
+	TEST_INIT_TEMP_MEMORY(100_KiB);
+
+	sLargeHashSetTest<TempAllocator>();
 };
