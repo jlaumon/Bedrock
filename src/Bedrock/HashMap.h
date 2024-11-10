@@ -54,6 +54,7 @@ struct MapInsertResult
 	EInsertResult mResult;
 };
 
+
 template <typename taKey>
 struct SetInsertResult
 {
@@ -66,6 +67,10 @@ struct SetInsertResult
 };
 
 
+// Dense HashMap class.
+// Heavily insipired from https://github.com/martinus/unordered_dense.
+// The key-values are stored contiguously (no holes), so iteration is very fast. Bucket metadata is stored separately.
+// Supports TempAllocator. Behaves as a set if taValue is void (see HashSet typedef) below.
 template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
 struct HashMap : taHash
 {
@@ -78,53 +83,212 @@ struct HashMap : taHash
 	using ConstIter = const KeyValue*;
 	using Iter = const KeyValue*; // FIXME Iter should not allow modifying keys
 
-
+	// Default
 	HashMap() = default;
 	~HashMap() = default;
 
-	HashMap(const HashMap& inOther)
-	{
-		*this = inOther;
-	}
-
-	HashMap& operator=(const HashMap& inOther)
-	{
-		Clear();
-		
-		mKeyValues.Reserve(inOther.mKeyValues.Capacity());
-		mBuckets.Reserve(inOther.mBuckets.Capacity());
-
-		mKeyValues = inOther.mKeyValues;
-		mBuckets = inOther.mBuckets;
-
-		return *this;
-	}
-
+	// Move
 	HashMap(HashMap&&) = default;
 	HashMap& operator=(HashMap&& ioOther) = default;
 
-	void Clear()
-	{
-		mKeyValues.Clear();
-		mBuckets.Clear();
-		mBuckets.Resize(mBuckets.Capacity());
-	}
+	// Copy
+	HashMap(const HashMap& inOther);
+	HashMap& operator=(const HashMap& inOther);
 
-	bool Empty() const
-	{
-		return mKeyValues.Empty();
-	}
+	void Clear();
+	bool Empty() const { return mKeyValues.Empty(); }
+	bool IsFull() const	{ return mKeyValues.Size() == mKeyValues.Capacity(); }
 
 	ConstIter Begin() const { return mKeyValues.Begin(); }
 	ConstIter End() const { return mKeyValues.End(); }
 	Iter Begin() { return mKeyValues.Begin(); }
 	Iter End() { return mKeyValues.End(); }
 
-	bool IsFull() const
+	// Find (non-const) ---------------------------------------
+
+	Iter Find(const taKey& inKey) requires cIsMap
 	{
-		return mKeyValues.Size() == mKeyValues.Capacity();
+		return FindInternal(inKey);
 	}
 
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	Iter Find(const taAltKey& inKey) requires cIsMap
+	{
+		return FindInternal(inKey);
+	}
+
+	// Find (const) -------------------------------------------
+
+	ConstIter Find(const taKey& inKey) const
+	{
+		return FindInternal(inKey);
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	ConstIter Find(const taAltKey& inKey) const
+	{
+		return FindInternal(inKey);
+	}
+
+
+	// Contains -----------------------------------------------
+
+	bool Contains(const taKey& inKey) const
+	{
+		return FindInternal(inKey) != End();
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	bool Contains(const taAltKey& inKey) const
+	{
+		return FindInternal(inKey) != End();
+	}
+
+	// Insert (Map version) -----------------------------------
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltKey, typename taAltValue>
+	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
+	InsertResult Insert(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	// Insert (Set version) -----------------------------------
+
+	InsertResult Insert(const taKey& inKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(inKey);
+	}
+
+	InsertResult Insert(taKey&& ioKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey));
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	InsertResult Insert(taAltKey&& ioKey) requires cIsSet
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey));
+	}
+
+	// InsertOrAssign (Map only) ------------------------------
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::Yes>(inKey, gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltValue>
+	requires cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::Yes>(gMove(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	template <typename taAltKey, typename taAltValue>
+	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
+	InsertResult InsertOrAssign(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::Yes>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
+	}
+
+	// Emplace (Map and Set) ---------------------------------
+
+	template <typename... taArgs>
+	InsertResult Emplace(const taKey& inKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taArgs>(ioArgs)...);
+	}
+
+	template <typename... taArgs>
+	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taArgs>(ioArgs)...);
+	}
+
+	template <typename taAltKey, typename... taArgs>
+	requires cIsTransparent<taHash>
+	InsertResult Emplace(taAltKey&& ioKey, taArgs&&... ioArgs)
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
+	}
+
+	// Operator[] (Map only) ---------------------------------
+
+	template<class T = taValue>
+	T& operator[](const taKey& inKey) requires cIsMap
+	{
+		return EmplaceInternal<EReplaceExisting::No>(inKey).mValue;
+	}
+
+	template<class T = taValue>
+	T& operator[](taKey&& ioKey)
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey)).mValue;
+	}
+
+	template <typename taAltKey, class T = taValue>
+	requires cIsTransparent<taHash>
+	T& operator[](taAltKey&& ioKey) requires cIsMap 
+	{
+		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey)).mValue;
+	}
+
+	// Erase (Map and Set) -----------------------------------
+
+	bool Erase(const taKey& inKey)
+	{
+		return EraseInternal(inKey);
+	}
+
+	template <typename taAltKey>
+	requires cIsTransparent<taHash>
+	bool Erase(const taAltKey& inKey)
+	{
+		return EraseInternal(inKey);
+	}
+
+private:
+	using Bucket = Details::HashMapBucket;
+
+	// Get the mask to use when incrementing bucket indices to get wrap-around.
+	// The number of buckets is a power of 2, so we can use a bitwise and as a faster modulo.
+	int GetBucketSizeMask() const
+	{
+		gAssert(!mBuckets.Empty());
+		return mBuckets.Size() - 1;
+	}
+
+	// Helper to get the key (because of the KeyValue difference between Map/Set).
+	const taKey& GetKey(const KeyValue& ioKeyValue) const
+	{
+		if constexpr (cIsMap)
+			return ioKeyValue.mKey;
+		else
+			return ioKeyValue;
+	}
+
+	// Increase the capacity of the map.
 	void Grow()
 	{
 		int new_buckets_size = gMax(mBuckets.Size() * 2, 16);
@@ -150,179 +314,7 @@ struct HashMap : taHash
 		}
 	}
 
-
-	Iter Find(const taKey& inKey) requires cIsMap
-	{
-		return FindInternal(inKey);
-	}
-
-	template <typename taAltKey>
-	requires cIsTransparent<taHash>
-	Iter Find(const taAltKey& inKey) requires cIsMap
-	{
-		return FindInternal(inKey);
-	}
-
-
-	ConstIter Find(const taKey& inKey) const
-	{
-		return FindInternal(inKey);
-	}
-
-	template <typename taAltKey>
-	requires cIsTransparent<taHash>
-	ConstIter Find(const taAltKey& inKey) const
-	{
-		return FindInternal(inKey);
-	}
-
-
-
-	bool Contains(const taKey& inKey) const
-	{
-		return FindInternal(inKey) != End();
-	}
-
-	template <typename taAltKey>
-	requires cIsTransparent<taHash>
-	bool Contains(const taAltKey& inKey) const
-	{
-		return FindInternal(inKey) != End();
-	}
-
-
-
-	template <typename taAltValue>
-	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taAltValue>(ioValue));
-	}
-
-	template <typename taAltValue>
-	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taAltValue>(ioValue));
-	}
-
-	template <typename taAltKey, typename taAltValue>
-	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
-	InsertResult Insert(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
-	}
-
-
-	InsertResult Insert(const taKey& inKey) requires cIsSet
-	{
-		return EmplaceInternal<EReplaceExisting::No>(inKey);
-	}
-
-	InsertResult Insert(taKey&& ioKey) requires cIsSet
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey));
-	}
-
-	template <typename taAltKey>
-	requires cIsTransparent<taHash>
-	InsertResult Insert(taAltKey&& ioKey) requires cIsSet
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey));
-	}
-
-
-	template <typename taAltValue>
-	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(const taKey& inKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::Yes>(inKey, gForward<taAltValue>(ioValue));
-	}
-
-	template <typename taAltValue>
-	requires cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(taKey&& ioKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::Yes>(gMove(ioKey), gForward<taAltValue>(ioValue));
-	}
-
-	template <typename taAltKey, typename taAltValue>
-	requires cIsTransparent<taHash> && cIsAssignable<taValue&, taAltValue&&>
-	InsertResult InsertOrAssign(taAltKey&& ioKey, taAltValue&& ioValue) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::Yes>(gForward<taAltKey>(ioKey), gForward<taAltValue>(ioValue));
-	}
-
-	template <typename... taArgs>
-	InsertResult Emplace(const taKey& inKey, taArgs&&... ioArgs)
-	{
-		return EmplaceInternal<EReplaceExisting::No>(inKey, gForward<taArgs>(ioArgs)...);
-	}
-
-	template <typename... taArgs>
-	InsertResult Emplace(taKey&& ioKey, taArgs&&... ioArgs)
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey), gForward<taArgs>(ioArgs)...);
-	}
-
-	template <typename taAltKey, typename... taArgs>
-	requires cIsTransparent<taHash>
-	InsertResult Emplace(taAltKey&& ioKey, taArgs&&... ioArgs)
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey), gForward<taArgs>(ioArgs)...);
-	}
-
-	template<class T = taValue>
-	T& operator[](const taKey& inKey) requires cIsMap
-	{
-		return EmplaceInternal<EReplaceExisting::No>(inKey).mValue;
-	}
-
-	template<class T = taValue>
-	T& operator[](taKey&& ioKey)
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gMove(ioKey)).mValue;
-	}
-
-	template <typename taAltKey, class T = taValue>
-	requires cIsTransparent<taHash>
-	T& operator[](taAltKey&& ioKey) requires cIsMap 
-	{
-		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey)).mValue;
-	}
-
-	bool Erase(const taKey& inKey)
-	{
-		return EraseInternal(inKey);
-	}
-
-
-	template <typename taAltKey>
-	requires cIsTransparent<taHash>
-	bool Erase(const taAltKey& inKey)
-	{
-		return EraseInternal(inKey);
-	}
-
-private:
-	using Bucket = Details::HashMapBucket;
-
-	int GetBucketSizeMask() const
-	{
-		gAssert(!mBuckets.Empty());
-
-		// The number of buckets is a power of 2, so we can use a bitwise and as a faster modulo.
-		return mBuckets.Size() - 1;
-	}
-
-	const taKey& GetKey(const KeyValue& ioKeyValue) const
-	{
-		if constexpr (cIsMap)
-			return ioKeyValue.mKey;
-		else
-			return ioKeyValue;
-	}
-
+	// Internal function to find a key.
 	template <typename taAltKey>
 	Iter FindInternal(const taAltKey& inKey) const
 	{
@@ -346,6 +338,7 @@ private:
 		Yes,
 	};
 
+	// Internal function to emplace a key and value.
 	template <EReplaceExisting taReplaceExisting, typename taAltKey, typename... taArgs>
 	InsertResult EmplaceInternal(taAltKey&& ioKey, taArgs&&... ioArgs)
 	{
@@ -384,7 +377,7 @@ private:
 		return { key_value, EInsertResult::Added };
 	}
 
-
+	// Internal function to erase a key.
 	template <typename taAltKey>
 	bool EraseInternal(const taAltKey& inKey)
 	{
@@ -449,6 +442,7 @@ private:
 		bool   mFoundKey;				// True if the key was found at this bucket.
 	};
 
+	// Find the bucket where a key is (or should be).
 	template <typename taAltKey>
 	FindBucketResult FindBucket(const taAltKey& inKey, bool inKeyMayBeFound = true) const
 	{
@@ -548,9 +542,44 @@ private:
 	}
 
 	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues; // Key-value pairs stored in a dense array.
-	Vector<Bucket, taAllocator<Bucket>>     mBuckets;
+	Vector<Bucket, taAllocator<Bucket>>     mBuckets;	// Bucket metadata.
 };
 
 
+// Dense HashSet class.
 template <typename taKey, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
 using HashSet = HashMap<taKey, void, taHash, taAllocator>;
+
+
+template <typename taKey, typename taValue, typename taHash, template <typename> class taAllocator>
+HashMap<taKey, taValue, taHash, taAllocator>::HashMap(const HashMap& inOther)
+{
+	*this = inOther;
+}
+
+
+template <typename taKey, typename taValue, typename taHash, template <typename> class taAllocator>
+HashMap<taKey, taValue, taHash, taAllocator>& HashMap<taKey, taValue, taHash, taAllocator>::operator=(
+	const HashMap& inOther)
+{
+	Clear();
+		
+	mKeyValues.Reserve(inOther.mKeyValues.Capacity());
+	mBuckets.Reserve(inOther.mBuckets.Capacity());
+
+	mKeyValues = inOther.mKeyValues;
+	mBuckets   = inOther.mBuckets;
+
+	return *this;
+}
+
+
+template <typename taKey, typename taValue, typename taHash, template <typename> class taAllocator>
+void HashMap<taKey, taValue, taHash, taAllocator>::Clear()
+{
+	mKeyValues.Clear();
+	mBuckets.Clear();
+	mBuckets.Resize(mBuckets.Capacity());
+}
+
+
