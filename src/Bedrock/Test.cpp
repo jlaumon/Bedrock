@@ -3,10 +3,12 @@
 #include <Bedrock/Debug.h>
 #include <Bedrock/Vector.h>
 #include <Bedrock/StringView.h>
+#include <Bedrock/Trace.h>
+#include <Bedrock/Ticks.h>
 
 struct Test
 {
-	StringView   mName;
+	const char*  mName;
 	TestFunction mFunction = nullptr;
 };
 
@@ -37,18 +39,23 @@ bool gIsRunningTest()
 
 bool gRunTests()
 {
-	//gApp.Log("Running all tests.");
+	gTrace("Running all tests.");
 	bool all_success = true;
 
 	for (const Test& test : sGetAllTests())
 	{
 		sCurrentTestName    = test.mName;
 		sCurrentTestSuccess = true;
-		//gApp.Log(R"(Test "{}" starting.)", test.mName);
+		gTrace(R"(Test "%s" starting.)", test.mName);
+		Timer timer;
 
 		test.mFunction();
 
-		//gApp.Log(R"(Test "{}" finished: {}.)", test.mName, sCurrentTestSuccess ? "Success" : "Failure");
+		gTrace(R"(Test "%s" finished: %s (%.2f ms))", 
+			test.mName, 
+			sCurrentTestSuccess ? "Success" : "Failure",
+			gTicksToMilliseconds(timer.GetTicks()));
+
 		all_success = all_success && sCurrentTestSuccess;
 		sCurrentTestName = "";
 	}
@@ -59,7 +66,7 @@ bool gRunTests()
 
 void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine)
 {
-	//gApp.LogError(R"({}({}) failed ({}:{}))", inMacro, inCode, inFile, inLine);
+	gTrace(R"(%s(%s) failed (%s:%d))", inMacro, inCode, inFile, inLine);
 
 	sCurrentTestSuccess = false;
 
