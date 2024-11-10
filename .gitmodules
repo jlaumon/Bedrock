@@ -1,3 +1,6 @@
 [submodule "thirdparty/rapidhash"]
 	path = thirdparty/rapidhash
 	url = https://github.com/jlaumon/rapidhash
+[submodule "thirdparty/stb"]
+	path = thirdparty/stb
+	url = https://github.com/nothings/stb.git
