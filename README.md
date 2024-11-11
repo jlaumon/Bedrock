@@ -2,6 +2,8 @@
 
 Bedrock is an STL alternative. Smaller, simpler, in many case faster. It's meant to be **comfy** (it's a bed) for **me** (made of rock, maybe not to everyone's taste).
 
+Currently Windows only. Supports MSVC and Clang.
+
 ```c++
 
 Vector<int>           vector;        // Roughly equivalent to std::vector<int>, with extra useful methods (Find, SwapErase, etc.)
