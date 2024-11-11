@@ -47,5 +47,5 @@ jobs:
 
     - name: Run Tests
       shell: cmd
-      run: .\bin\x64\${{env.BUILD_CONFIGURATION}}\BedrockTest${{env.BUILD_CONFIGURATION}}.exe
+      run: .\test\bin\x64\${{env.BUILD_CONFIGURATION}}\BedrockTest${{env.BUILD_CONFIGURATION}}.exe
 
