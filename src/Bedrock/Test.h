@@ -15,13 +15,27 @@
 #define IF_TESTS_ENABLED(code)
 #endif
 
-bool gIsRunningTest();											// Return true if the current thread is running a test.
 
 using TestFunction = void (*)();
 
-void gRegisterTest(const char* inName, TestFunction inFunction); // Register a test. Called automatically by REGISTER_TEST.
-bool gRunTests();												// Run all registered tests. Return true on success.
-void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine); // Fail current test. Called automatically by the TEST macros.
+enum class TestResult
+{
+	Success,
+	Failure
+};
+
+
+// Register a test. Called automatically by REGISTER_TEST.
+void gRegisterTest(const char* inName, TestFunction inFunction); 
+
+// Run all registered tests. Return true on success.
+TestResult gRunTests();
+
+// Return true if the current thread is running a test.
+bool gIsRunningTest();											 
+
+// Fail current test. Called automatically by the TEST macros.
+void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine);
 
 
 namespace Details

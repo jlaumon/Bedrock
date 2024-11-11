@@ -37,7 +37,7 @@ bool gIsRunningTest()
 }
 
 
-bool gRunTests()
+TestResult gRunTests()
 {
 	gTrace("Running all tests.");
 	bool all_success = true;
@@ -60,7 +60,7 @@ bool gRunTests()
 		sCurrentTestName = "";
 	}
 
-	return all_success;
+	return all_success ? TestResult::Success : TestResult::Failure;
 }
 
 

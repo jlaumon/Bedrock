@@ -1,0 +1,8 @@
+.vs/
+obj/
+bin/
+enc_temp_folder/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.user

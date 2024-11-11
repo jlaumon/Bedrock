@@ -21,7 +21,7 @@ void gSetCurrentThreadName(const char* inName)
 	wchar_t wchar_name[256];
 
 	// Convert the name to wide chars.
-	int written_wchars = MultiByteToWideChar(CP_UTF8, 0, inName, gStrLen(inName), wchar_name, gElemCount(wchar_name) - 1);
+	int written_wchars = MultiByteToWideChar(CP_UTF8, 0, inName, gStrLen(inName), wchar_name, (int)(gElemCount(wchar_name) - 1));
 
 	if (written_wchars == 0)
 		return; // Conversion failed.
