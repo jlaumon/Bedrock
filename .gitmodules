@@ -1,6 +1,6 @@
-[submodule "thirdparty/rapidhash"]
-	path = thirdparty/rapidhash
+[submodule "Bedrock/thirdparty/rapidhash"]
+	path = Bedrock/thirdparty/rapidhash
 	url = https://github.com/jlaumon/rapidhash
-[submodule "thirdparty/stb"]
-	path = thirdparty/stb
+[submodule "Bedrock/thirdparty/stb"]
+	path = Bedrock/thirdparty/stb
 	url = https://github.com/nothings/stb.git
