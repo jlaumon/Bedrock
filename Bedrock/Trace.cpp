@@ -3,7 +3,7 @@
 #include <Bedrock/String.h>
 
 #define STB_SPRINTF_IMPLEMENTATION
-#include <Bedrock/../../thirdparty/stb/stb_sprintf.h>
+#include <Bedrock/thirdparty/stb/stb_sprintf.h>
 
 #include <stdio.h>
 

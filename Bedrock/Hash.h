@@ -18,7 +18,7 @@ using uint32_t = uint32;
 using uint8_t = uint8;
 
 #define RAPIDHASH_NO_INCLUDES
-#include <Bedrock/../../thirdparty/rapidhash/rapidhash.h>
+#include <Bedrock/thirdparty/rapidhash/rapidhash.h>
 }
 
 constexpr uint64 cHashSeed = RAPID_SEED;

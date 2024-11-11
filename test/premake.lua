@@ -43,18 +43,20 @@ solution "BedrockTest"
 			editandcontinue "On"
 			
 		filter {}
+
+		vpaths { ["*"] = ".." } -- get rid of the .. folder in the vstudio solution explorer
 		
 		files 
 		{
-			"../src/**.h",
-			"../src/**.cpp",
-			"../src/**.natvis",
-			"../src/.clang-format",
-			"../src/.editorconfig",
+			"../Bedrock/*.h",
+			"../Bedrock/*.cpp",
+			"../Bedrock/*.natvis",
+			"../.clang-format",
+			"../.editorconfig",
 			"Main.cpp"
 		}
 		
 		includedirs 
 		{
-			"../src",
+			"..",
 		}
