@@ -10,6 +10,7 @@ solution "BedrockTest"
 		symbols "On"
 		cppdialect "C++latest"
 		exceptionhandling "Off"
+		rtti "Off"
 		flags 
 		{
 			"MultiProcessorCompile",
