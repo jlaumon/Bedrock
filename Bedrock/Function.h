@@ -3,6 +3,7 @@
 
 #include <Bedrock/Core.h>
 #include <Bedrock/PlacementNew.h>
+#include <Bedrock/Move.h>
 
 template <typename taType> struct Function;
 

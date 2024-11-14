@@ -2,7 +2,7 @@
 #pragma once
 
 #include <Bedrock/Core.h>
-#include <Bedrock/TypeTraits.h>
+#include <Bedrock/Move.h>
 
 namespace Details {	struct PlacementNewTag {}; }
 constexpr void* operator new(size_t, void* inPtr, Details::PlacementNewTag) noexcept { return inPtr; }
