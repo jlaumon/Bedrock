@@ -69,10 +69,10 @@ struct NoCopy
 
 
 // Litterals for memory sizes.
-constexpr size_t operator ""_B(size_t inValue)		{ return inValue; }
-constexpr size_t operator ""_KiB(size_t inValue)	{ return inValue * 1024; }
-constexpr size_t operator ""_MiB(size_t inValue)	{ return inValue * 1024 * 1024; }
-constexpr size_t operator ""_GiB(size_t inValue)	{ return inValue * 1024 * 1024 * 1024; }
+constexpr int64 operator ""_B(unsigned long long inValue)	{ return (int64)inValue; }
+constexpr int64 operator ""_KiB(unsigned long long inValue)	{ return (int64)inValue * 1024; }
+constexpr int64 operator ""_MiB(unsigned long long inValue)	{ return (int64)inValue * 1024 * 1024; }
+constexpr int64 operator ""_GiB(unsigned long long inValue)	{ return (int64)inValue * 1024 * 1024 * 1024; }
 
 
 // Basic functions.
