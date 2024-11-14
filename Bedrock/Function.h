@@ -40,7 +40,7 @@ struct Function<taResult(taArgs...)>
 	Function& operator=(Function&& ioOther)
 	{
 		// Moving from self is not allowed.
-		gAssert(mStorage != ioOther.mStorage);
+		gAssert(&mStorage[0] != &ioOther.mStorage[0]);
 
 		if (IsValid())
 			Destruct();
