@@ -39,7 +39,11 @@ struct Function<taResult(taArgs...)>
 
 	Function& operator=(Function&& ioOther)
 	{
-		Destruct();
+		// Moving from self is not allowed.
+		gAssert(mStorage != ioOther.mStorage);
+
+		if (IsValid())
+			Destruct();
 
 		if (ioOther.IsValid())
 			ioOther.MoveTo(this);
