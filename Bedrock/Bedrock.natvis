@@ -38,4 +38,9 @@
     </Expand>
   </Type>
 
+
+  <Type Name="Atomic&lt;*&gt;">
+    <DisplayString>{ mValue }</DisplayString>
+  </Type>
+
 </AutoVisualizer>
