@@ -41,6 +41,27 @@ REGISTER_TEST("String")
 	String moved_test = gMove(test);
 	TEST_TRUE(moved_test.Begin() == test_begin);
 	TEST_TRUE(test.Begin() == StringView().Begin());
+
+
+	struct TestStringView : StringView
+	{
+		using StringView::cEmpty; // Making this public for tests 
+	};
+
+	// Empty strings all point to the same 1 byte buffer (cEmpty) to avoid allocations.
+	String empty;
+	TEST_TRUE(empty.AsCStr() == TestStringView::cEmpty);
+	empty = "";
+	TEST_TRUE(empty.AsCStr() == TestStringView::cEmpty);
+	String empty2 = empty;
+	TEST_TRUE(empty2.AsCStr() == TestStringView::cEmpty);
+	test = "other_test";
+	test = empty; // Copy but keep existing alloc.
+	TEST_TRUE(test.Empty());
+	TEST_TRUE(test.AsCStr() != TestStringView::cEmpty);
+	empty = gMove(test); // Pass alloc to empty.
+	TEST_TRUE(empty.AsCStr() != TestStringView::cEmpty);
+	TEST_TRUE(test.AsCStr() == TestStringView::cEmpty);
 };
 
 

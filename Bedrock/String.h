@@ -209,10 +209,15 @@ void StringBase<taAllocator>::MoveFrom(StringBase&& ioOther)
 template <class taAllocator>
 void StringBase<taAllocator>::CopyFrom(StringView inOther)
 {
-	// Copying from self is not allowed.
-	gAssert(Begin() > inOther.End() || End() < inOther.Begin());
+	// Copying from self is not allowed (unless it's cEmpty).
+	gAssert(Begin() > inOther.End() || End() < inOther.Begin() || mData == cEmpty);
 
 	Resize(0); // Makes sure Reserve doesn't have to copy data over to a new allocation.
+
+	// If copying from an empty string, nothing to do.
+	if (inOther.Empty())
+		return;
+
 	Reserve(inOther.Size() + 1);
 
 	mSize = inOther.Size();
