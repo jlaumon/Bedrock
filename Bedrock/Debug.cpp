@@ -18,6 +18,8 @@ bool gIsDebuggerAttached()
 // Set the name of the current thread.
 void gSetCurrentThreadName(const char* inName)
 {
+	gAssert(inName[0] != 0); // Don't set an empty name.
+
 	wchar_t wchar_name[256];
 
 	// Convert the name to wide chars.
