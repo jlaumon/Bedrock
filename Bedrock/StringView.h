@@ -14,17 +14,24 @@ struct StringView
 	constexpr StringView& operator=(StringView&&)		= default;
 	constexpr StringView(const char* inString);
 	constexpr StringView(const char* inString, int inSize);
+	constexpr StringView(const char* inBegin, const char* inEnd);
 	constexpr StringView& operator=(const char* inString);
 
 	constexpr int Size() const { return mSize; }
 	constexpr bool Empty() const { return mSize == 0; }
 	constexpr const char* AsCStr() const;
 	constexpr StringView SubStr(int inPosition, int inCount = cMaxInt) const;
+	constexpr void RemoveSuffix(int inCount);
+
+	constexpr const char* Data() const { return mData; }
 
 	constexpr const char* Begin() const { return mData; }
 	constexpr const char* End() const { return mData + mSize; }
 	constexpr const char* begin() const { return mData; }
 	constexpr const char* end() const { return mData + mSize; }
+
+	constexpr char Front() const { gAssert(mSize > 0); return mData[0]; }
+	constexpr char Back() const { gAssert(mSize > 0); return mData[mSize - 1]; }
 
 	constexpr bool operator==(StringView inOther) const;
 	constexpr char operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
@@ -33,6 +40,8 @@ struct StringView
 	constexpr int Find(StringView inString) const;
 	constexpr int FindFirstOf(StringView inCharacters) const;
 	constexpr int FindLastOf(StringView inCharacters) const;
+
+	constexpr bool Contains(StringView inString) const { return Find(inString) != -1; }
 
 	constexpr bool StartsWith(StringView inPrefix) const;
 	constexpr bool EndsWith(StringView inSuffix) const;
@@ -61,6 +70,15 @@ constexpr StringView::StringView(const char* inString, int inSize)
 	gAssert(inString != nullptr);
 	mData = const_cast<char*>(inString);
 	mSize = inSize;
+}
+
+
+constexpr StringView::StringView(const char* inBegin, const char* inEnd)
+{
+	gAssert(inBegin != nullptr && inEnd != nullptr);
+	gAssert(inEnd >= inBegin);
+	mData = const_cast<char*>(inBegin);
+	mSize = (int)(inEnd - inBegin);
 }
 
 
@@ -168,6 +186,13 @@ constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 	gAssert(inPosition >= 0 && inPosition <= mSize); // Not exactly like gBoundCheck since inPosition == mSize is allowed.
 	int size = gMin(inCount, mSize - inPosition);
 	return { mData + inPosition, size };
+}
+
+
+constexpr void StringView::RemoveSuffix(int inCount)
+{
+	gAssert(mSize >= inCount);
+	mSize -= inCount;
 }
 
 

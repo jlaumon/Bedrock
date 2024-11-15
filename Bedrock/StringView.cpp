@@ -23,6 +23,8 @@ REGISTER_TEST("StringView")
 	TEST_TRUE(test.Find("st") == 2);
 	TEST_TRUE(test.Find("") == -1);
 	TEST_TRUE(test.Find("ests") == -1);
+	TEST_TRUE(test.Contains("st"));
+	TEST_FALSE(test.Contains("ests"));
 
 	TEST_TRUE(test.FindFirstOf("t") == 0);
 	TEST_TRUE(test.FindFirstOf("es") == 1);
@@ -53,5 +55,8 @@ REGISTER_TEST("StringView")
 	TEST_FALSE(test.EndsWith("x"));
 	TEST_FALSE(test.EndsWith("test it"));
 	TEST_FALSE(empty.EndsWith("test"));
+
+	test.RemoveSuffix(2);
+	TEST_TRUE(test == "te");
 };
 
