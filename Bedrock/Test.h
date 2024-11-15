@@ -75,21 +75,28 @@ namespace Details
 #define TEST_INIT_TEMP_MEMORY(size_in_bytes) Details::TestScopedTempMemory<size_in_bytes> TOKEN_PASTE(test_temp_mem, __LINE__)
 
 
+// Get the file name part of a path. eg. file.cpp for path/to/file.cpp
+constexpr const char* gGetFileNamePart(const char* inPath)
+{
+	int after_last_slash = 0;
+	int i = 0;
+	while (inPath[i] != 0)
+	{
+		if (inPath[i] == '/' || inPath[i] == '\\')
+			after_last_slash = i + 1;
+		i++;
+	}
+
+	return inPath + after_last_slash;
+}
+
+
 namespace Details
 {
-	// Get the file name part of a path. eg. file.cpp for path/to/file.cpp
+	// Same as gGetFileNamePart but consteval
 	consteval const char* gConstevalGetFileNamePart(const char* inPath)
 	{
-		int after_last_slash = 0;
-		int i = 0;
-		while (inPath[i] != 0)
-		{
-			if (inPath[i] == '/' || inPath[i] == '\\')
-				after_last_slash = i + 1;
-			i++;
-		}
-
-		return inPath + after_last_slash;
+		return gGetFileNamePart(inPath);
 	}
 
 	// Helper to initialize temporary memory for the scope of a test.
