@@ -35,5 +35,23 @@ REGISTER_TEST("StringView")
 	TEST_TRUE(test.SubStr(1) == "est");
 	TEST_TRUE(test.SubStr(2, 1) == "s");
 	TEST_TRUE(test.SubStr(2, 5) == "st");
+
+	StringView empty;
+
+	TEST_TRUE(test.StartsWith("tes"));
+	TEST_TRUE(test.StartsWith("test"));
+	TEST_TRUE(test.StartsWith(""));
+	TEST_TRUE(empty.StartsWith(""));
+	TEST_FALSE(test.StartsWith("x"));
+	TEST_FALSE(test.StartsWith("test it"));
+	TEST_FALSE(empty.StartsWith("test"));
+
+	TEST_TRUE(test.EndsWith("est"));
+	TEST_TRUE(test.EndsWith("test"));
+	TEST_TRUE(test.EndsWith(""));
+	TEST_TRUE(empty.EndsWith(""));
+	TEST_FALSE(test.EndsWith("x"));
+	TEST_FALSE(test.EndsWith("test it"));
+	TEST_FALSE(empty.EndsWith("test"));
 };
 

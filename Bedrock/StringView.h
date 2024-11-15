@@ -4,9 +4,8 @@
 #include <Bedrock/Core.h>
 #include <Bedrock/Algorithm.h>
 
-class StringView
+struct StringView
 {
-public:
 	constexpr StringView()								= default;
 	constexpr StringView(const StringView&)				= default;
 	constexpr StringView(StringView&&)					= default;
@@ -34,6 +33,9 @@ public:
 	constexpr int Find(StringView inString) const;
 	constexpr int FindFirstOf(StringView inCharacters) const;
 	constexpr int FindLastOf(StringView inCharacters) const;
+
+	constexpr bool StartsWith(StringView inPrefix) const;
+	constexpr bool EndsWith(StringView inSuffix) const;
 
 protected:
 	static constexpr char cEmpty[1] = "";
@@ -137,6 +139,21 @@ constexpr int StringView::FindLastOf(StringView inCharacters) const
 }
 
 
+constexpr bool StringView::StartsWith(StringView inPrefix) const
+{
+	return SubStr(0, inPrefix.mSize) == inPrefix;
+}
+
+
+constexpr bool StringView::EndsWith(StringView inSuffix) const
+{
+	if (mSize < inSuffix.mSize)
+		return false;
+
+	return SubStr(mSize - inSuffix.mSize, inSuffix.mSize) == inSuffix;
+}
+
+
 constexpr bool StringView::operator==(StringView inOther) const
 {
 	if (mSize != inOther.mSize)
@@ -148,7 +165,7 @@ constexpr bool StringView::operator==(StringView inOther) const
 
 constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 {
-	gBoundsCheck(inPosition, mSize);
+	gAssert(inPosition >= 0 && inPosition <= mSize); // Not exactly like gBoundCheck since inPosition == mSize is allowed.
 	int size = gMin(inCount, mSize - inPosition);
 	return { mData + inPosition, size };
 }
