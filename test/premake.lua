@@ -37,8 +37,8 @@ solution "BedrockTest"
 				"STBSP__ASAN=__declspec(no_sanitize_address)", -- stb sprintf needs to disable ASAN but doesn't define the correct macro for MSVC... pull prequest pending for 2+ years...
 			}
 			optimize "Debug"
-			editandcontinue "Off"	  -- incompatble with ASAN
-			flags "NoIncrementalLink" -- incompatble with ASAN
+			editandcontinue "Off"	  -- incompatible with ASAN
+			flags "NoIncrementalLink" -- incompatible with ASAN
 			sanitize "Address"
 			
 		filter { "configurations:DebugOpt" }
