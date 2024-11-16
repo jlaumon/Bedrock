@@ -53,7 +53,7 @@ struct Vector : private taAllocator
 	Vector(Span<taOtherType> inSpan);
 	template <class taOtherType>
 	requires cIsConvertible<taOtherType, taType>
-	Vector& operator=(Span<taType> inSpan);
+	Vector& operator=(Span<taOtherType> inSpan);
 	
 	int Size() const { return mSize; }
 	int Capacity() const { return mCapacity; }
@@ -201,7 +201,7 @@ Vector<taType, taAllocator>::Vector(Span<taOtherType> inSpan)
 
 template <typename taType, typename taAllocator>
 template <class taOtherType> requires cIsConvertible<taOtherType, taType>
-Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Span<taType> inSpan)
+Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Span<taOtherType> inSpan)
 {
 	CopyFrom(inSpan);
 	return *this;
