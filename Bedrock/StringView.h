@@ -22,6 +22,7 @@ struct StringView
 	constexpr const char* AsCStr() const;
 	constexpr StringView SubStr(int inPosition, int inCount = cMaxInt) const;
 	constexpr void RemoveSuffix(int inCount);
+	constexpr void RemovePrefix(int inCount);
 
 	constexpr const char* Data() const { return mData; }
 
@@ -192,6 +193,14 @@ constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 constexpr void StringView::RemoveSuffix(int inCount)
 {
 	gAssert(mSize >= inCount);
+	mSize -= inCount;
+}
+
+
+constexpr void StringView::RemovePrefix(int inCount)
+{
+	gAssert(mSize >= inCount);
+	mData += inCount;
 	mSize -= inCount;
 }
 

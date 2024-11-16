@@ -58,5 +58,8 @@ REGISTER_TEST("StringView")
 
 	test.RemoveSuffix(2);
 	TEST_TRUE(test == "te");
+
+	test.RemovePrefix(1);
+	TEST_TRUE(test == "e");
 };
 
