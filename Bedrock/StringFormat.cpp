@@ -45,5 +45,5 @@ REGISTER_TEST("StringFormat")
 
 	String test2 = "test";
 	gFormat(test2, "also with %s strings", "non-temp");
-	TEST_TRUE(test == "also with non-temp strings");
+	TEST_TRUE(test2 == "also with non-temp strings");
 };

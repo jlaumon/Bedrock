@@ -2,6 +2,7 @@
 #pragma once
 
 #include <Bedrock/Core.h>
+#include <Bedrock/Move.h>
 
 // Format a string into @a output.
 // Output can be any String-like class, it only needs Clear() and Append(const char*, int) methods.
@@ -39,17 +40,17 @@ namespace Details
 		return const_cast<char*>(inBuffer);
 	}
 
+	using StringFormatCallback = char*(*)(const char* inBuffer, void* outString, int inBufferLength);
+
+	// Internal function doing the actual formatting.
+	void StringFormat(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, ...);
+
 	// Template function helper to automatically get the right callback.
 	template <class taString, typename... taArgs>
 	void StringFormat(taString& outString, const char* inFormat, taArgs&&... ioArgs)
 	{
 		StringFormat(&StringFormatAppendCallback<taString>, &outString, inFormat, gForward<taArgs>(ioArgs)...);
 	}
-
-	using StringFormatCallback = char*(*)(const char* inBuffer, void* outString, int inBufferLength);
-
-	// Internal function doing the actual formatting.
-	void StringFormat(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, ...);
 }
 
 
