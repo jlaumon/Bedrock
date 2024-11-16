@@ -9,12 +9,15 @@
 	do                                     \
 	{                                      \
 		(void)sizeof(printf(__VA_ARGS__)); \
-		gTraceInternal(__VA_ARGS__);       \
+		Details::Trace(__VA_ARGS__);       \
 	} while (false)
 
 
-// Internal function doing the actual tracing.
-void gTraceInternal(const char* inFormat, ...);
+namespace Details
+{
+	// Internal function doing the actual tracing.
+	void Trace(const char* inFormat, ...);
+}
 
 // Printf forward declaration for the format validation hack above.
 extern "C" int __cdecl printf(const char* inFormat, ...);

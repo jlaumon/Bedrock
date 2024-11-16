@@ -5,6 +5,7 @@
 #include <Bedrock/StringView.h>
 #include <Bedrock/InitializerList.h>
 
+
 template <class taAllocator>
 struct StringBase : StringView, private taAllocator
 {
@@ -53,10 +54,15 @@ struct StringBase : StringView, private taAllocator
 	char& operator[](int inPosition) { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 	using StringView::operator[];
 
-	void Reserve(int inCapacity);
-	void Resize(int inSize);
+	void Reserve(int inCapacity);	// Note: inCapacity includes the null terminator.
+	void Resize(int inSize);		// Note: inSize does not include the null terminator (it is stored at [Size()]).
+	void Clear() { Resize(0); }
 
 	int Capacity() const { return mCapacity; }
+
+	void Append(StringView inString);
+	void Append(const char* inString, int inSize) { Append(StringView(inString, inSize)); }
+	void operator+=(StringView inString) { Append(inString); }
 
 private:
 	void MoveFrom(StringBase&& ioOther);
@@ -175,6 +181,17 @@ void StringBase<taAllocator>::Resize(int inSize)
 
 	mData[inSize] = 0;
 	mSize         = inSize;
+}
+
+
+template <class taAllocator>
+void StringBase<taAllocator>::Append(StringView inString)
+{
+	Reserve(mSize + inString.Size() + 1);
+
+	gMemCopy(mData + mSize, inString.Data(), inString.Size());
+	mSize += inString.Size();
+	mData[mSize] = 0;
 }
 
 

@@ -1,38 +1,31 @@
 // SPDX-License-Identifier: MPL-2.0
 #include <Bedrock/Trace.h>
 #include <Bedrock/String.h>
+#include <Bedrock/StringFormat.h>
 
-#define STB_SPRINTF_IMPLEMENTATION
 #include <Bedrock/thirdparty/stb/stb_sprintf.h>
 
+#include <stdarg.h>
 #include <stdio.h>
 
-void gTraceInternal(const char* inFormat, ...)
+namespace Details
+{
+	// The va_list version is kept out of the header to avoid including stdarg.h in the header (or defining it manually) for now.
+	void StringFormat(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, va_list inArgs);
+}
+
+
+void Details::Trace(const char* inFormat, ...)
 {
 	va_list args;
 	va_start(args, inFormat);
 
-	TempString buffer;
-	buffer.Reserve(STB_SPRINTF_MIN * 2);
-	
-	auto callback = [](const char*, void* ioContext, int inLength)
-	{
-		TempString& buffer = *(TempString*)ioContext;
-
-		// Update the current string length.
-		buffer.Resize(buffer.Size() + inLength);
-
-		// Reserve more space as necessary.
-		buffer.Reserve(buffer.Size() + STB_SPRINTF_MIN);
-
-		return buffer.End();
-	};
-
-	stbsp_vsprintfcb(callback, &buffer, buffer.Begin(), inFormat, args);
-
-	va_end(args);
+	TempString string;
+	StringFormat(&StringFormatAppendCallback<TempString>, &string, inFormat, args);
 
 	// For now just print to stdout.
 	// TODO add timestamps, thread name, log to file, etc.
-	puts(buffer.AsCStr());
+	puts(string.AsCStr());
 }
+
+

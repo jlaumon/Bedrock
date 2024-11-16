@@ -64,10 +64,10 @@ namespace Details
 #define REGISTER_TEST(name) static auto TOKEN_PASTE(test_register, __LINE__) = Details::TestDummy{ name } *[]()
 
 // Check that a condition is true. Fail the current test otherwise.
-#define TEST_TRUE(code) do { if (!(code)) gFailTest("TEST_TRUE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+#define TEST_TRUE(code) do { if (!(code)) gFailTest("TEST_TRUE", #code, Details::ConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
 
 // Check that a condition is false. Fail the current test otherwise.
-#define TEST_FALSE(code) do { if (code) gFailTest("TEST_FALSE", #code, Details::gConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+#define TEST_FALSE(code) do { if (code) gFailTest("TEST_FALSE", #code, Details::ConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
 
 
 // Initialize Temporary Memory for the scope of a test.
@@ -94,7 +94,7 @@ constexpr const char* gGetFileNamePart(const char* inPath)
 namespace Details
 {
 	// Same as gGetFileNamePart but consteval
-	consteval const char* gConstevalGetFileNamePart(const char* inPath)
+	consteval const char* ConstevalGetFileNamePart(const char* inPath)
 	{
 		return gGetFileNamePart(inPath);
 	}

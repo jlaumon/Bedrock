@@ -62,6 +62,12 @@ REGISTER_TEST("String")
 	empty = gMove(test); // Pass alloc to empty.
 	TEST_TRUE(empty.AsCStr() != TestStringView::cEmpty);
 	TEST_TRUE(test.AsCStr() == TestStringView::cEmpty);
+
+	test.Clear();
+	test.Append("test");
+	TEST_TRUE(test == "test");
+	test.Append("test2");
+	TEST_TRUE(test == "testtest2");
 };
 
 
