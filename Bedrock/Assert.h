@@ -7,11 +7,11 @@
 #ifdef ASSERTS_ENABLED
 
 // Assert macro.
-#define gAssert(condition)                                                 \
-	do                                                                     \
-	{                                                                      \
-		if (!(condition) && gReportAssert(#condition, __FILE__, __LINE__)) \
-			breakpoint;                                                    \
+#define gAssert(condition)                                                              \
+	do                                                                                  \
+	{                                                                                   \
+		if (!(condition) && gReportAssert(#condition, __FILE__, __LINE__)) [[unlikely]] \
+			breakpoint;                                                                 \
 	} while (0)
 
 // Internal assert report function. Return true if it should break.
