@@ -82,11 +82,15 @@ struct Vector : private taAllocator
 	void Reserve(int inCapacity);
 	void Resize(int inNewSize, EResizeInit inInit = EResizeInit::ZeroInit);
 
-	// TODO
-	// insert
-	// emplace
-	// erase
-	void SwapErase(int inIndex);
+	void Insert(int inPosition, const taType& inValue);
+	void Insert(int inPosition, taType&& inValue);
+	void Insert(int inPosition, Span<const taType> inValues);
+	template <typename... taArgs>
+	void Emplace(int inPosition, taArgs&&... inArgs);
+
+	void Erase(int inPosition);
+	void Erase(int inPosition, int inCount);
+	void SwapErase(int inPosition);
 
 	void PushBack(const taType& inValue);
 	void PushBack(taType&& inValue);
@@ -99,6 +103,8 @@ private:
 	void MoveFrom(Vector&& ioOther);
 	void CopyFrom(Span<const taType> inOther);
 	void Grow(int inCapacity);
+	void MoveElementsForward(int inFromPosition, int inToPosition);
+	void MoveElementsBackward(int inFromPosition, int inToPosition);
 
 	taType* mData     = nullptr;
 	int     mSize     = 0;
@@ -313,15 +319,142 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 
 
 template <typename taType, typename taAllocator>
-void Vector<taType, taAllocator>::SwapErase(int inIndex)
+void Vector<taType, taAllocator>::Insert(int inPosition, const taType& inValue)
 {
-	gSwapErase(*this, Begin() + inIndex);
+	gBoundsCheck(inPosition, mSize + 1);
+	// Copying from self is not allowed.
+	gAssert(&inValue < mData || &inValue > (mData + mCapacity));
+
+	Grow(mSize + 1);
+
+	// If we're not inserting at the end.
+	if (inPosition != mSize)
+	{
+		// Move existing elements to free inPosition.
+		MoveElementsForward(inPosition, inPosition + 1);
+
+		// Copy the new element at inPosition.
+		mData[inPosition] = inValue;
+	}
+	else
+	{
+		// Copy-construct the new element.
+		gPlacementNew(mData[inPosition], inValue);
+	}
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::Insert(int inPosition, taType&& inValue)
+{
+	gBoundsCheck(inPosition, mSize + 1);
+	// Copying from self is not allowed.
+	gAssert(&inValue < mData || &inValue > (mData + mCapacity));
+
+	Grow(mSize + 1);
+
+	// If we're not inserting at the end.
+	if (inPosition != mSize)
+	{
+		// Move existing elements to free inPosition.
+		MoveElementsForward(inPosition, inPosition + 1);
+
+		// Move the new element at inPosition.
+		mData[inPosition] = gMove(inValue);
+	}
+	else
+	{
+		// Move-construct the new element.
+		gPlacementNew(mData[inPosition], gMove(inValue));
+	}
+
+	mSize++;
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::Insert(int inPosition, Span<const taType> inValues)
+{
+	gBoundsCheck(inPosition, mSize + 1);
+	// Copying from self is not allowed.
+	gAssert(mData > inValues.End() || (mData + mCapacity) < inValues.Begin() || inValues.Empty());
+
+	Grow(mSize + inValues.Size());
+
+	// If we're not inserting at the end, move existing elements to free inPosition.
+	if (inPosition != mSize)
+		MoveElementsForward(inPosition, inPosition + inValues.Size());
+
+	// Copy-assign or Copy-construct the new elements depending on if they're past the current end.
+	int position = inPosition;
+	for (const taType& value : inValues)
+	{
+		if (position < mSize)
+			mData[position] = value;
+		else
+			gPlacementNew(mData[position], value);
+
+		position++;
+	}
+
+	mSize += inValues.Size();
+}
+
+
+template <typename taType, typename taAllocator>
+template <typename ... taArgs>
+void Vector<taType, taAllocator>::Emplace(int inPosition, taArgs&&... inArgs)
+{
+	gBoundsCheck(inPosition, mSize + 1);
+
+	Grow(mSize + 1);
+
+	// If we're not inserting at the end.
+	if (inPosition != mSize)
+	{
+		// Move existing elements to free inPosition.
+		MoveElementsForward(inPosition, inPosition + 1);
+
+		// Destruct the element at inPosition.
+		mData[inPosition].~taType();
+	}
+
+	// Construct the new element.
+	gPlacementNew(mData[inPosition], gForward<taArgs>(inArgs)...);
+	mSize++;
+}
+
+
+template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition)
+{
+	Erase(inPosition, 1);
+}
+
+
+template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition, int inCount)
+{
+	gBoundsCheck(inPosition, mSize);
+	gBoundsCheck(inPosition + inCount - 1, mSize);
+
+	MoveElementsBackward(inPosition + inCount, inPosition);
+
+	mSize -= inCount;
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::SwapErase(int inPosition)
+{
+	gSwapErase(*this, Begin() + inPosition);
 }
 
 
 template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::PushBack(const taType& inValue)
 {
+	// Copying from self is not allowed.
+	gAssert(&inValue < mData || &inValue > (mData + mCapacity));
+
 	Grow(mSize + 1);
 
 	gPlacementNew(mData[mSize], inValue);
@@ -332,10 +465,10 @@ void Vector<taType, taAllocator>::PushBack(const taType& inValue)
 template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::PushBack(taType&& inValue)
 {
-	Grow(mSize + 1);
+	// Copying from self is not allowed.
+	gAssert(&inValue < mData || &inValue > (mData + mCapacity));
 
-	gPlacementNew(mData[mSize], gMove(inValue));
-	mSize++;
+	EmplaceBack(gMove(inValue));
 }
 
 
@@ -379,7 +512,7 @@ template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::CopyFrom(Span<const taType> inOther)
 {
 	// Copying from self is not allowed.
-	gAssert(Begin() > inOther.End() || End() < inOther.Begin() || inOther.Empty());
+	gAssert(mData > inOther.End() || (mData + mCapacity) < inOther.Begin() || inOther.Empty());
 
 	Clear();
 	Reserve(inOther.Size());
@@ -402,3 +535,72 @@ void Vector<taType, taAllocator>::Grow(int inCapacity)
 
 	Reserve(gMax(mCapacity + mCapacity / 2, inCapacity));
 }
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::MoveElementsForward(int inFromPosition, int inToPosition)
+{
+	gAssert(inFromPosition < inToPosition);
+
+	// Moving forward/right.
+	// Example:
+	// MoveElementsForward(1, 3):
+	// | 0 | 1 | 2 | 3 | 4 | 5 |
+	// | A | B | C | D | . | . |
+	// | A | . | . | B | C | D |
+	// C and D are move-constructed.
+	// B is move-assigned.
+
+	int num_elem_to_move = mSize - inFromPosition;
+	int move_distance  = inToPosition - inFromPosition;
+	gBoundsCheck(inToPosition + num_elem_to_move - 1, mCapacity);
+
+	// First do the move constructs (into unused memory).
+	for (taType* dest = mData + gMax(inToPosition, mSize), *dest_end = mData + inToPosition + num_elem_to_move; dest < dest_end; dest++)
+	{
+		taType* src = dest - move_distance;
+		gPlacementNew(*dest, gMove(*src));
+	}
+
+	// Then do the move assigns, in reverse order since there may be overlap.
+	for (taType* dest = mData + gMin(inToPosition + num_elem_to_move, mSize) - 1, *dest_end = mData + inToPosition; dest >= dest_end; dest--)
+	{
+		taType* src = dest - move_distance;
+		*dest = gMove(*src);
+	}
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::MoveElementsBackward(int inFromPosition, int inToPosition)
+{
+	gAssert(inFromPosition > inToPosition);
+
+	// Moving backward/left.
+	// Example:
+	// MoveElementsForward(3, 1):
+	// | 0 | 1 | 2 | 3 | 4 | 5 |
+	// | A | B | C | D | E | F |
+	// | A | D | E | F | . | . |
+	// D, E and F are move-assigned.
+	// [4] and [5] are destructed.
+
+	int num_elem_to_move = mSize - inFromPosition;
+	int move_distance  = inFromPosition - inToPosition;
+	gBoundsCheck(inToPosition, mSize + 1);
+
+	// First do the move assignements.
+	taType* dest = mData + inToPosition;
+	for (taType* dest_end = dest + num_elem_to_move; dest < dest_end; dest++)
+	{
+		taType* src = dest + move_distance;
+		*dest = gMove(*src);
+	}
+
+	// Then destruct the unused elements.
+	for (taType* dest_end = mData + mSize; dest < dest_end; dest++)
+	{
+		dest->~taType();
+	}
+}
+
