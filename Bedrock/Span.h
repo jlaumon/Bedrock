@@ -39,6 +39,9 @@ struct Span
 	constexpr int Size() const { return mSize; }
 	constexpr bool Empty() const { return mSize == 0; }
 
+	constexpr const taType* Data() const { return mData; }
+	constexpr taType* Data() { return mData; }
+
 	constexpr const taType* Begin() const { return mData; }
 	constexpr const taType* End() const { return mData + mSize; }
 	constexpr const taType* begin() const { return mData; }
@@ -47,6 +50,11 @@ struct Span
 	constexpr taType* End() { return mData + mSize; }
 	constexpr taType* begin() { return mData; }
 	constexpr taType* end() { return mData + mSize; }
+	
+	constexpr taType Front() const { gAssert(mSize > 0); return mData[0]; }
+	constexpr taType Back() const { gAssert(mSize > 0); return mData[mSize - 1]; }
+	constexpr taType& Front() { gAssert(mSize > 0); return mData[0]; }
+	constexpr taType& Back() { gAssert(mSize > 0); return mData[mSize - 1]; }
 
 	constexpr taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
@@ -67,6 +75,11 @@ private:
 
 // Span is a contiguous container.
 template<class T> inline constexpr bool cIsContiguous<Span<T>> = true;
+
+
+// Deduction guides.
+template<typename taContainer>
+Span(taContainer) -> Span<typename taContainer::ValueType>;
 
 
 template <typename taType>
