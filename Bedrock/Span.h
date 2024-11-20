@@ -37,6 +37,7 @@ struct Span
 	constexpr Span(taContainer& inContainer) : mData(inContainer.Begin()), mSize(inContainer.Size()) {}
 
 	constexpr int Size() const { return mSize; }
+	constexpr int SizeInBytes() const { return mSize * sizeof(taType); }
 	constexpr bool Empty() const { return mSize == 0; }
 
 	constexpr const taType* Data() const { return mData; }
