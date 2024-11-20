@@ -167,7 +167,11 @@ constexpr auto gEmplaceSorted(taContainer& ioContainer, const taValue& inElem)
 	if (it != end && *it == inElem)
 		return it;
 	else
-		return ioContainer.Emplace(it, inElem);
+	{
+		int index = (int)(ioContainer.Begin() - it);
+		ioContainer.Emplace(index, inElem);
+		return ioContainer.Begin() + index;
+	}
 }
 
 
