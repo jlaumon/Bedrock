@@ -375,6 +375,9 @@ void Vector<taType, taAllocator>::Insert(int inPosition, taType&& inValue)
 template <typename taType, typename taAllocator>
 void Vector<taType, taAllocator>::Insert(int inPosition, Span<const taType> inValues)
 {
+	if (inValues.Empty())
+		return;
+
 	gBoundsCheck(inPosition, mSize + 1);
 	// Copying from self is not allowed.
 	gAssert(mData > inValues.End() || (mData + mCapacity) < inValues.Begin() || inValues.Empty());
