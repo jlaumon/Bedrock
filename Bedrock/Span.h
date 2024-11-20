@@ -52,12 +52,13 @@ struct Span
 	constexpr taType* begin() { return mData; }
 	constexpr taType* end() { return mData + mSize; }
 	
-	constexpr taType Front() const { gAssert(mSize > 0); return mData[0]; }
-	constexpr taType Back() const { gAssert(mSize > 0); return mData[mSize - 1]; }
+	constexpr const taType& Front() const { gAssert(mSize > 0); return mData[0]; }
+	constexpr const taType& Back() const { gAssert(mSize > 0); return mData[mSize - 1]; }
 	constexpr taType& Front() { gAssert(mSize > 0); return mData[0]; }
 	constexpr taType& Back() { gAssert(mSize > 0); return mData[mSize - 1]; }
 
-	constexpr taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
+	constexpr const taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
+	constexpr taType& operator[](int inPosition) { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
 	constexpr bool operator==(Span inOther) const { return gEquals(*this, inOther); }
 	template <typename taOtherType>
