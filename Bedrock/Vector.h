@@ -95,7 +95,7 @@ struct Vector : private taAllocator
 	void PushBack(const taType& inValue);
 	void PushBack(taType&& inValue);
 	template <typename... taArgs>
-	void EmplaceBack(taArgs&&... inArgs);
+	taType& EmplaceBack(taArgs&&... inArgs);
 
 	void PopBack();
 
@@ -477,12 +477,16 @@ void Vector<taType, taAllocator>::PushBack(taType&& inValue)
 
 template <typename taType, typename taAllocator>
 template <typename ... taArgs>
-void Vector<taType, taAllocator>::EmplaceBack(taArgs&&... inArgs)
+taType& Vector<taType, taAllocator>::EmplaceBack(taArgs&&... inArgs)
 {
 	Grow(mSize + 1);
 
-	gPlacementNew(mData[mSize], gForward<taArgs>(inArgs)...);
+	taType& back = mData[mSize];
+
+	gPlacementNew(back, gForward<taArgs>(inArgs)...);
 	mSize++;
+
+	return back;
 }
 
 
