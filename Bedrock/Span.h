@@ -56,6 +56,7 @@ struct Span
 	constexpr const taType& Back() const { gAssert(mSize > 0); return mData[mSize - 1]; }
 	constexpr taType& Front() { gAssert(mSize > 0); return mData[0]; }
 	constexpr taType& Back() { gAssert(mSize > 0); return mData[mSize - 1]; }
+	constexpr int GetIndex(const taType& inElement) const;
 
 	constexpr const taType& operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 	constexpr taType& operator[](int inPosition) { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
@@ -82,6 +83,15 @@ template<class T> inline constexpr bool cIsContiguous<Span<T>> = true;
 // Deduction guides.
 template<typename taContainer>
 Span(taContainer) -> Span<typename taContainer::ValueType>;
+
+
+template <typename taType>
+constexpr int Span<taType>::GetIndex(const taType& inElement) const
+{
+	int index = (int)(&inElement - mData);
+	gBoundsCheck(index, mSize);
+	return index;
+}
 
 
 template <typename taType>
