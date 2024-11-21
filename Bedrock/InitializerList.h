@@ -33,10 +33,6 @@ namespace std
 		constexpr const taType* end() const noexcept { return mEnd; }
 		constexpr size_t size() const noexcept { return mEnd - mBegin; }
 
-		constexpr const taType* Begin() const noexcept { return mBegin; }
-		constexpr const taType* End() const noexcept { return mEnd; }
-		constexpr size_t Size() const noexcept { return mEnd - mBegin; }
-
 	private:
 		const taType* mBegin = nullptr;
 		const taType* mEnd = nullptr;

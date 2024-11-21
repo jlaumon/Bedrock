@@ -9,11 +9,11 @@ REGISTER_TEST("Vector")
 	// YOLO compare function.
 	auto equal = [](const auto& a, const auto& b) -> bool
 	{
-		if (a.Size() != b.Size())
+		if (a.Size() != b.size())
 			return false;
 
 		for (int i = 0; i < a.Size(); i++)
-			if (*(a.Begin() + i) != *(b.Begin() + i))
+			if (*(a.Begin() + i) != *(b.begin() + i))
 				return false;
 
 		return true;
