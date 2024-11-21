@@ -187,6 +187,9 @@ void StringBase<taAllocator>::Resize(int inSize)
 template <class taAllocator>
 void StringBase<taAllocator>::Append(StringView inString)
 {
+	if (inString.Empty())
+		return;
+
 	Reserve(mSize + inString.Size() + 1);
 
 	gMemCopy(mData + mSize, inString.Data(), inString.Size());
