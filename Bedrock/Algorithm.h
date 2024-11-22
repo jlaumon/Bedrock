@@ -49,8 +49,7 @@ constexpr ReverseAdapter<taContainer> gBackwards(taContainer& ioContainer) { ret
 
 
 // Check if a value is present in a vector-like container.
-template<typename taValue, typename taContainer>
-constexpr bool gContains(const taContainer& ioContainer, const taValue& inElem)
+constexpr bool gContains(const auto& ioContainer, const auto& inElem)
 {
 	for (auto& elem : ioContainer)
 		if (elem == inElem)
@@ -61,8 +60,7 @@ constexpr bool gContains(const taContainer& ioContainer, const taValue& inElem)
 
 
 // Check if any element in the container matches the predicate.
-template <typename taContainer, typename taPredicate>
-bool gAnyOf(const taContainer& inContainer, const taPredicate& inPredicate)
+bool gAnyOf(const auto& inContainer, const auto& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -72,8 +70,7 @@ bool gAnyOf(const taContainer& inContainer, const taPredicate& inPredicate)
 
 
 // Check if none of the elements in the container matches the predicate.
-template <typename taContainer, typename taPredicate>
-bool gNoneOf(const taContainer& inContainer, const taPredicate& inPredicate)
+bool gNoneOf(const auto& inContainer, const auto& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -83,8 +80,7 @@ bool gNoneOf(const taContainer& inContainer, const taPredicate& inPredicate)
 
 
 // Check if all the elements in the container matches the predicate.
-template <typename taContainer, typename taPredicate>
-bool gAllOf(const taContainer& inContainer, const taPredicate& inPredicate)
+bool gAllOf(const auto& inContainer, const auto& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (!inPredicate(element))
@@ -94,8 +90,7 @@ bool gAllOf(const taContainer& inContainer, const taPredicate& inPredicate)
 
 
 // Check if all the elements inside two containers are equal.
-template<typename taContainerA, typename taContainerB>
-constexpr bool gEquals(const taContainerA& inContainerA, const taContainerB& inContainerB)
+constexpr bool gEquals(const auto& inContainerA, const auto& inContainerB)
 {
 	if (inContainerA.Size() != inContainerB.Size())
 		return false;
@@ -117,8 +112,8 @@ constexpr bool gEquals(const taContainerA& inContainerA, const taContainerB& inC
 
 
 // Lower bound implementation to avoid <algorithm>
-template<typename taIterator, typename taValue>
-constexpr taIterator gLowerBound(taIterator inFirst, taIterator inLast, const taValue& inElem)
+template<typename taIterator>
+constexpr taIterator gLowerBound(taIterator inFirst, taIterator inLast, const auto& inElem)
 {
 	auto first = inFirst;
 	auto count = inLast - first;
@@ -144,8 +139,8 @@ constexpr taIterator gLowerBound(taIterator inFirst, taIterator inLast, const ta
 
 
 // Find a value in a sorted [inBegin, inEnd) range.
-template<typename taIterator, typename taValue>
-constexpr auto gFindSorted(taIterator inBegin, taIterator inEnd, const taValue& inElem)
+template<typename taIterator>
+constexpr auto gFindSorted(taIterator inBegin, taIterator inEnd, const auto& inElem)
 {
 	auto it = gLowerBound(inBegin, inEnd, inElem);
 
@@ -157,16 +152,21 @@ constexpr auto gFindSorted(taIterator inBegin, taIterator inEnd, const taValue& 
 
 
 // Find a value in a sorted vector-like container.
-template<typename taValue, typename taContainer>
-constexpr auto gFindSorted(taContainer& inContainer, const taValue& inElem)
+constexpr auto gFindSorted(const auto& inContainer, const auto& inElem)
+{
+	return gFindSorted(inContainer.Begin(), inContainer.End(), inElem);
+}
+
+
+// Find a value in a sorted vector-like container.
+constexpr auto gFindSorted(auto& inContainer, const auto& inElem)
 {
 	return gFindSorted(inContainer.Begin(), inContainer.End(), inElem);
 }
 
 
 // Insert a value in a sorted vector-like container.
-template<typename taValue, typename taContainer>
-constexpr auto gEmplaceSorted(taContainer& ioContainer, const taValue& inElem)
+constexpr auto gEmplaceSorted(auto& ioContainer, const auto& inElem)
 {
 	auto end = ioContainer.End();
 	auto it = gLowerBound(ioContainer.Begin(), end, inElem);
@@ -183,8 +183,8 @@ constexpr auto gEmplaceSorted(taContainer& ioContainer, const taValue& inElem)
 
 
 // Find a value in the [inBegin, inEnd) range.
-template<typename taIterator, typename taValue>
-constexpr auto gFind(taIterator inBegin, taIterator inEnd, const taValue& inElem)
+template<typename taIterator>
+constexpr auto gFind(taIterator inBegin, taIterator inEnd, const auto& inElem)
 {
 	for (auto it = inBegin; it != inEnd; ++it)
 	{
@@ -197,24 +197,21 @@ constexpr auto gFind(taIterator inBegin, taIterator inEnd, const taValue& inElem
 
 
 // Find a value in a vector-like container.
-template<typename taValue, typename taContainer>
-constexpr auto gFind(taContainer& inContainer, const taValue& inElem)
+constexpr auto gFind(auto& inContainer, const auto& inElem)
 {
 	return gFind(inContainer.Begin(), inContainer.End(), inElem);
 }
 
 
 // Find a value in a vector-like container.
-template<typename taValue, typename taContainer>
-constexpr auto gFind(const taContainer& inContainer, const taValue& inElem)
+constexpr auto gFind(const auto& inContainer, const auto& inElem)
 {
 	return gFind(inContainer.Begin(), inContainer.End(), inElem);
 }
 
 
 // Erase an element from a vector-like container by swapping it with the last one and reducing the size by 1.
-template<typename taContainer, typename taIterator>
-constexpr void gSwapErase(taContainer& inContainer, const taIterator& inIterator)
+constexpr void gSwapErase(auto& inContainer, const auto& inIterator)
 {
 	if (inIterator != (inContainer.End() - 1))
 		gSwap(inContainer.Back(), *inIterator);
@@ -223,8 +220,7 @@ constexpr void gSwapErase(taContainer& inContainer, const taIterator& inIterator
 
 
 // Remove the first value that matches predicate from a vector-like container.
-template<typename taContainer, typename taPredicate>
-constexpr bool gSwapEraseFirstIf(taContainer& inContainer, const taPredicate& inPredicate)
+constexpr bool gSwapEraseFirstIf(auto& inContainer, const auto& inPredicate)
 {
 	auto end = inContainer.End();
 	auto begin = inContainer.Begin();
