@@ -12,14 +12,17 @@ uint64 gHash(StringView inValue)
 
 REGISTER_TEST("StringView")
 {
-	StringView test = "test";
+	StringView test = "testtest";
 
-	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(test.Size() == 8);
 
 	TEST_TRUE(test.Find('e') == 1);
 	TEST_TRUE(test.Find('z') == -1);
+	TEST_TRUE(test.Find('t', 0) == 0);
+	TEST_TRUE(test.Find('t', 1) == 3);
 
 	TEST_TRUE(test.Find("test") == 0);
+	TEST_TRUE(test.Find("test", 1) == 4);
 	TEST_TRUE(test.Find("st") == 2);
 	TEST_TRUE(test.Find("") == -1);
 	TEST_TRUE(test.Find("ests") == -1);
@@ -30,13 +33,13 @@ REGISTER_TEST("StringView")
 	TEST_TRUE(test.FindFirstOf("es") == 1);
 	TEST_TRUE(test.FindFirstOf("zxcv") == -1);
 
-	TEST_TRUE(test.FindLastOf("t") == 3);
-	TEST_TRUE(test.FindLastOf("es") == 2);
+	TEST_TRUE(test.FindLastOf("t") == 7);
+	TEST_TRUE(test.FindLastOf("es") == 6);
 	TEST_TRUE(test.FindLastOf("zxcv") == -1);
 
-	TEST_TRUE(test.SubStr(1) == "est");
+	TEST_TRUE(test.SubStr(1) == "esttest");
 	TEST_TRUE(test.SubStr(2, 1) == "s");
-	TEST_TRUE(test.SubStr(2, 5) == "st");
+	TEST_TRUE(test.SubStr(6, 5) == "st");
 
 	StringView empty;
 
@@ -49,7 +52,7 @@ REGISTER_TEST("StringView")
 	TEST_FALSE(empty.StartsWith("test"));
 
 	TEST_TRUE(test.EndsWith("est"));
-	TEST_TRUE(test.EndsWith("test"));
+	TEST_TRUE(test.EndsWith("test")); 
 	TEST_TRUE(test.EndsWith(""));
 	TEST_TRUE(empty.EndsWith(""));
 	TEST_FALSE(test.EndsWith("x"));
@@ -57,9 +60,12 @@ REGISTER_TEST("StringView")
 	TEST_FALSE(empty.EndsWith("test"));
 
 	test.RemoveSuffix(2);
-	TEST_TRUE(test == "te");
+	TEST_TRUE(test == "testte");
 
-	test.RemovePrefix(1);
-	TEST_TRUE(test == "e");
+	test.RemovePrefix(2);
+	TEST_TRUE(test == "stte");
+
+	test.RemovePrefix(4);
+	TEST_TRUE(test == empty);
 };
 

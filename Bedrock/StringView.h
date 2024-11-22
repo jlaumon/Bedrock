@@ -37,8 +37,8 @@ struct StringView
 	constexpr bool operator==(StringView inOther) const;
 	constexpr char operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
-	constexpr int Find(char inCharacter) const;
-	constexpr int Find(StringView inString) const;
+	constexpr int Find(char inCharacter, int inPos = 0) const;
+	constexpr int Find(StringView inString, int inPos = 0) const;
 	constexpr int FindFirstOf(StringView inCharacters) const;
 	constexpr int FindLastOf(StringView inCharacters) const;
 
@@ -98,9 +98,9 @@ constexpr const char* StringView::AsCStr() const
 }
 
 
-constexpr int StringView::Find(char inCharacter) const
+constexpr int StringView::Find(char inCharacter, int inPos) const
 {
-	const char* iter = gFind(*this, inCharacter);
+	const char* iter = gFind(SubStr(inPos), inCharacter);
 	if (iter == End())
 		return -1;
 	else
@@ -108,7 +108,7 @@ constexpr int StringView::Find(char inCharacter) const
 }
 
 
-constexpr int StringView::Find(StringView inString) const
+constexpr int StringView::Find(StringView inString, int inPos) const
 {
 	if (inString.Empty())
 		return -1;
@@ -116,11 +116,11 @@ constexpr int StringView::Find(StringView inString) const
 	const char searched_first_char = inString[0];
 	const int searched_size = inString.Size();
 
-	int pos = 0;
+	int pos = inPos;
 	while (true)
 	{
 		// Search for the first char.
-		pos = SubStr(pos).Find(searched_first_char);
+		pos = Find(searched_first_char, pos);
 
 		// If not found, the entire string will not be found.
 		if (pos == -1)

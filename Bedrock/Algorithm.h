@@ -62,7 +62,7 @@ constexpr bool gContains(const taContainer& ioContainer, const taValue& inElem)
 
 // Check if any element in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gAnyOf(taContainer& inContainer, const taPredicate& inPredicate)
+bool gAnyOf(const taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -73,7 +73,7 @@ bool gAnyOf(taContainer& inContainer, const taPredicate& inPredicate)
 
 // Check if none of the elements in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gNoneOf(taContainer& inContainer, const taPredicate& inPredicate)
+bool gNoneOf(const taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (inPredicate(element))
@@ -84,7 +84,7 @@ bool gNoneOf(taContainer& inContainer, const taPredicate& inPredicate)
 
 // Check if all the elements in the container matches the predicate.
 template <typename taContainer, typename taPredicate>
-bool gAllOf(taContainer& inContainer, const taPredicate& inPredicate)
+bool gAllOf(const taContainer& inContainer, const taPredicate& inPredicate)
 {
 	for (auto& element : inContainer)
 		if (!inPredicate(element))
@@ -143,17 +143,24 @@ constexpr taIterator gLowerBound(taIterator inFirst, taIterator inLast, const ta
 }
 
 
+// Find a value in a sorted [inBegin, inEnd) range.
+template<typename taIterator, typename taValue>
+constexpr auto gFindSorted(taIterator inBegin, taIterator inEnd, const taValue& inElem)
+{
+	auto it = gLowerBound(inBegin, inEnd, inElem);
+
+	if (it != inEnd && *it == inElem)
+		return it;
+	else
+		return inEnd;
+}
+
+
 // Find a value in a sorted vector-like container.
 template<typename taValue, typename taContainer>
 constexpr auto gFindSorted(taContainer& inContainer, const taValue& inElem)
 {
-	auto end = inContainer.End();
-	auto it = gLowerBound(inContainer.Begin(), end, inElem);
-
-	if (it != end && *it == inElem)
-		return it;
-	else
-		return end;
+	return gFindSorted(inContainer.Begin(), inContainer.End(), inElem);
 }
 
 
@@ -175,20 +182,33 @@ constexpr auto gEmplaceSorted(taContainer& ioContainer, const taValue& inElem)
 }
 
 
-// Find a value in a vector-like container.
-template<typename taValue, typename taContainer>
-constexpr auto gFind(taContainer& inContainer, const taValue& inElem)
+// Find a value in the [inBegin, inEnd) range.
+template<typename taIterator, typename taValue>
+constexpr auto gFind(taIterator inBegin, taIterator inEnd, const taValue& inElem)
 {
-	auto end = inContainer.End();
-	auto begin = inContainer.Begin();
-
-	for (auto it = begin; it != end; ++it)
+	for (auto it = inBegin; it != inEnd; ++it)
 	{
 		if (*it == inElem)
 			return it;
 	}
 
-	return end;
+	return inEnd;
+}
+
+
+// Find a value in a vector-like container.
+template<typename taValue, typename taContainer>
+constexpr auto gFind(taContainer& inContainer, const taValue& inElem)
+{
+	return gFind(inContainer.Begin(), inContainer.End(), inElem);
+}
+
+
+// Find a value in a vector-like container.
+template<typename taValue, typename taContainer>
+constexpr auto gFind(const taContainer& inContainer, const taValue& inElem)
+{
+	return gFind(inContainer.Begin(), inContainer.End(), inElem);
 }
 
 
