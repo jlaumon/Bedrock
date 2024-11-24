@@ -42,6 +42,9 @@ struct StringBase : StringView, private taAllocator
 	StringBase(InitializerList<char> inInitializerList);
 	StringBase& operator=(InitializerList<char> inInitializerList);
 
+	constexpr void RemoveSuffix(int inCount);
+
+	constexpr char* Data() const { return mData; }
 	constexpr char* Begin() { return mData; }
 	constexpr char* End() { return mData + mSize; }
 	constexpr char* begin() { return mData; }
@@ -67,7 +70,19 @@ struct StringBase : StringView, private taAllocator
 private:
 	void MoveFrom(StringBase&& ioOther);
 	void CopyFrom(StringView inOther);
+
+	using StringView::RemovePrefix; // Doesn't work on String as it just increments mData.
 };
+
+
+template <class taAllocator>
+constexpr void StringBase<taAllocator>::RemoveSuffix(int inCount)
+{
+	gAssert(mSize >= inCount);
+	mSize -= inCount;
+	mData[mSize] = 0; // Re-null terminate the string.
+}
+
 
 static_assert(sizeof(StringBase<Allocator<char>>) == 16);
 

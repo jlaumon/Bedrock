@@ -72,6 +72,10 @@ REGISTER_TEST("String")
 	TEST_TRUE(test == "test");
 	test.Append("test2");
 	TEST_TRUE(test == "testtest2");
+
+	test.RemoveSuffix(4);
+	TEST_TRUE(test == "testt");
+	TEST_TRUE(*test.End() == 0);
 };
 
 
