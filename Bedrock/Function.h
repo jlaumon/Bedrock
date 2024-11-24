@@ -109,7 +109,7 @@ private:
 		Destruct();
 	}
 
-	static constexpr int cStorageSize      = sizeof(void*) * 3;
+	static constexpr int cStorageSize      = sizeof(void*) * 4;
 	static constexpr int cStorageAlignment = alignof(void*);
 
 	const VTable* mVTable = nullptr;
