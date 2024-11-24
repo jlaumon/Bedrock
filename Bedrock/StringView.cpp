@@ -70,5 +70,15 @@ REGISTER_TEST("StringView")
 
 	test.RemovePrefix(4);
 	TEST_TRUE(test == empty);
+
+	{
+		StringView cmp = "abcd";
+		TEST_TRUE(cmp < "bacd");
+		TEST_TRUE(cmp < "abcde");
+		TEST_FALSE(cmp < "abc");
+		TEST_FALSE(cmp < "abad");
+		TEST_FALSE(cmp < "");
+		TEST_FALSE(StringView("") < "");
+	}
 };
 

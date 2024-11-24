@@ -37,6 +37,8 @@ struct StringView
 	constexpr bool operator==(StringView inOther) const;
 	constexpr char operator[](int inPosition) const { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 
+	constexpr bool operator<(StringView inOther) const; // TODO: replace with <=>
+
 	constexpr int Find(char inCharacter, int inPosition = 0) const;
 	constexpr int Find(StringView inString, int inPosition = 0) const;
 	constexpr int FindFirstOf(StringView inCharacters) const;
@@ -96,6 +98,18 @@ constexpr const char* StringView::AsCStr() const
 	// All our strings are null terminated so it's "safe", but assert in case it's a sub-string view.
 	gAssert(*End() == 0);
 	return mData;
+}
+
+
+constexpr bool StringView::operator<(StringView inOther) const
+{
+	int min_size = gMin(mSize, inOther.mSize);
+	int cmp      = gMemCmp(mData, inOther.mData, min_size);
+
+	if (cmp != 0)
+		return cmp < 0;
+	
+	return mSize < inOther.mSize;
 }
 
 
