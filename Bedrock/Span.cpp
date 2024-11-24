@@ -19,6 +19,8 @@ REGISTER_TEST("Span")
 
 	TEST_TRUE(test.SubSpan(0) == test);
 	TEST_TRUE(test.SubSpan(4, 10).Size() == 1);
+	TEST_TRUE(test.SubSpan(4, -1).Size() == 1); // Negative count behaves like cMaxInt
+	TEST_TRUE(test.SubSpan(4, -5).Size() == 1);
 
 	// Conversions to const, mostly to check that it compiles.
 	Span<const int> const_test = values;

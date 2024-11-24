@@ -68,7 +68,7 @@ struct Span
 
 	constexpr Span First(int inCount) const { gBoundsCheck(inCount, mSize); return { mData, inCount }; }
 	constexpr Span Last(int inCount) const { gBoundsCheck(inCount, mSize); return { mData + mSize - inCount, inCount }; }
-	constexpr Span SubSpan(int inPosition, int inCount = cMaxInt) const;
+	constexpr Span SubSpan(int inPosition, int inCount = cMaxInt) const; // Note: negative inCount behaves like cMaxInt
 
 private:
 	taType* mData = nullptr;
@@ -97,7 +97,11 @@ constexpr int Span<taType>::GetIndex(const taType& inElement) const
 template <typename taType>
 constexpr Span<taType> Span<taType>::SubSpan(int inPosition, int inCount) const
 {
-	gBoundsCheck(inPosition, mSize);
+	gBoundsCheck(inPosition, mSize + 1); // Note: inPosition == mSize is allowed.
+
+	if (inCount < 0)
+		inCount = cMaxInt;
+
 	int size = gMin(inCount, mSize - inPosition);
 	return { mData + inPosition, size };
 }

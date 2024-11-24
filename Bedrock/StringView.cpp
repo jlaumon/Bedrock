@@ -40,6 +40,9 @@ REGISTER_TEST("StringView")
 	TEST_TRUE(test.SubStr(1) == "esttest");
 	TEST_TRUE(test.SubStr(2, 1) == "s");
 	TEST_TRUE(test.SubStr(6, 5) == "st");
+	TEST_TRUE(test.SubStr(6, -1) == "st"); // Negative count behaves like cMaxInt
+	TEST_TRUE(test.SubStr(6, -5) == "st");
+
 
 	StringView empty;
 
