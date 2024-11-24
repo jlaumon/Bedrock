@@ -39,6 +39,7 @@ struct Thread : NoCopy
 
 	void Create(const ThreadConfig& inConfig, Function<void(Thread&)>&& ioEntryPoint);
 	void Join();
+	bool IsJoinable() const			{ return mOSHandle != nullptr; }
 		 
 	void RequestStop()				{ mStopRequested.Store(true); }
 	bool IsStopRequested() const	{ return mStopRequested.Load(); }
