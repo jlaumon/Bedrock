@@ -175,7 +175,7 @@ constexpr auto gEmplaceSorted(auto& ioContainer, const auto& inElem)
 		return it;
 	else
 	{
-		int index = (int)(ioContainer.Begin() - it);
+		int index = (int)(it - ioContainer.Begin());
 		ioContainer.Emplace(index, inElem);
 		return ioContainer.Begin() + index;
 	}
