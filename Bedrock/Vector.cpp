@@ -81,9 +81,14 @@ REGISTER_TEST("Vector")
 	}
 
 	{
-		Vector<int> test = { 0, 2, 3 };
+		Vector<int> test = { 0, 3 };
 		test.Emplace(1, 1);
-		auto expected = { 0, 1, 2, 3 };
+		auto expected = { 0, 1, 3 };
+		TEST_TRUE(equal(test, expected));
+
+		const int& i2 = 2;
+		test.Insert(2, 2);
+		expected = { 0, 1, 2, 3 };
 		TEST_TRUE(equal(test, expected));
 
 		test.Insert(4, 4);

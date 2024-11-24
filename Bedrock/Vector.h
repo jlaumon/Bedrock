@@ -341,6 +341,8 @@ void Vector<taType, taAllocator>::Insert(int inPosition, const taType& inValue)
 		// Copy-construct the new element.
 		gPlacementNew(mData[inPosition], inValue);
 	}
+
+	mSize++;
 }
 
 
