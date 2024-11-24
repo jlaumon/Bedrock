@@ -26,7 +26,7 @@ struct ThreadConfig
 {
 	String          mName        = "";      // The thread name.
 	int             mStackSize   = 128_KiB; // The stack size of the thread.
-	int             mTempMemSize = 1_MiB;   // Initialize a temp memory of that size of the thread. Can be 0.
+	int             mTempMemSize = 0;       // Initialize a temp memory of that size of the thread. Can be 0.
 	EThreadPriority mPriority    = EThreadPriority::Normal; // The priority of the thread.
 };
 
