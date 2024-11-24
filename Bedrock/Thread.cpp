@@ -73,9 +73,6 @@ void Thread::Join()
 	if (mOSHandle == nullptr)
 		return;
 
-	// Tell the thread to stop.
-	RequestStop();
-
 	// Wait for it to stop.
 	WaitForSingleObject(mOSHandle, INFINITE);
 	CloseHandle(mOSHandle);
