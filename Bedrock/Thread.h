@@ -7,7 +7,7 @@
 #include <Bedrock/String.h>
 
 
-using OSThreadHandle = void*;
+using OSThread = void*;
 
 struct Thread;
 
@@ -39,7 +39,7 @@ struct Thread : NoCopy
 
 	void Create(const ThreadConfig& inConfig, Function<void(Thread&)>&& ioEntryPoint);
 	void Join();
-	bool IsJoinable() const			{ return mOSHandle != nullptr; }
+	bool IsJoinable() const			{ return mOSThread != nullptr; }
 		 
 	void RequestStop()				{ mStopRequested.Store(true); }
 	bool IsStopRequested() const	{ return mStopRequested.Load(); }
@@ -51,7 +51,7 @@ private:
 
 	Function<void(Thread&)> mEntryPoint;
 	ThreadConfig            mConfig        = {};
-	OSThreadHandle          mOSHandle      = {};
+	OSThread                mOSThread      = {};
 	uint32                  mOSThreadID    = 0;
 	AtomicBool              mStopRequested = false;
 

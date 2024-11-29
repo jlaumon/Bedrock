@@ -47,8 +47,8 @@ void Thread::Create(const ThreadConfig& inConfig, Function<void(Thread&)>&& ioEn
 	mConfig     = inConfig;
 
 	// Create the thread in a suspended state.
-	mOSHandle = CreateThread(nullptr, inConfig.mStackSize, ThreadInternal::sThreadProc, this, CREATE_SUSPENDED, &mOSThreadID);
-	gAssert(mOSHandle != nullptr);
+	mOSThread = CreateThread(nullptr, inConfig.mStackSize, ThreadInternal::sThreadProc, this, CREATE_SUSPENDED, &mOSThreadID);
+	gAssert(mOSThread != nullptr);
 
 	// Set the priority.
 	int priority = THREAD_PRIORITY_NORMAL;
@@ -61,21 +61,21 @@ void Thread::Create(const ThreadConfig& inConfig, Function<void(Thread&)>&& ioEn
 	case EThreadPriority::AboveNormal:	priority = THREAD_PRIORITY_ABOVE_NORMAL;	break;
 	case EThreadPriority::Highest:		priority = THREAD_PRIORITY_HIGHEST;			break;
 	}
-	SetThreadPriority(mOSHandle, priority);
+	SetThreadPriority(mOSThread, priority);
 
 	// Start the thread.
-	ResumeThread(mOSHandle);
+	ResumeThread(mOSThread);
 }
 
 
 void Thread::Join()
 {
-	if (mOSHandle == nullptr)
+	if (mOSThread == nullptr)
 		return;
 
 	// Wait for it to stop.
-	WaitForSingleObject(mOSHandle, INFINITE);
-	CloseHandle(mOSHandle);
+	WaitForSingleObject(mOSThread, INFINITE);
+	CloseHandle(mOSThread);
 
 	Cleanup();
 }
@@ -86,7 +86,7 @@ void Thread::Cleanup()
 {
 	mEntryPoint    = {};
 	mConfig        = {};
-	mOSHandle      = {};
+	mOSThread      = {};
 	mOSThreadID    = 0;
 	mStopRequested.Store(false);
 }
@@ -99,7 +99,8 @@ void gYieldThread()
 }
 
 
-REGISTER_TEST("Thread") {
+REGISTER_TEST("Thread")
+{
 	Thread thread;
 
 	bool set_by_thread = false;
