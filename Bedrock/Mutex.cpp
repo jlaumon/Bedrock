@@ -37,13 +37,12 @@ void Mutex::Lock()
 
 void Mutex::Unlock()
 {
-	gAssert(mLockingThreadID == GetCurrentThreadId());
-
-	ReleaseSRWLockExclusive((PSRWLOCK)&mOSMutex);
-
 #ifdef ASSERTS_ENABLED
+	gAssert(mLockingThreadID == GetCurrentThreadId());
 	mLockingThreadID = cInvalidThreadID;
 #endif
+
+	ReleaseSRWLockExclusive((PSRWLOCK)&mOSMutex);
 }
 
 
