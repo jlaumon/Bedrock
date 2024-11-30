@@ -3,6 +3,7 @@
 
 #include <Bedrock/Core.h>
 
+struct ConditionVariable;
 
 using OSMutex  = void*;
 using OSThread = void*;
@@ -17,10 +18,14 @@ struct Mutex : NoCopy
 	void Unlock();
 
 private:
-	OSMutex  mOSMutex       = nullptr;
+	static constexpr uint32 cInvalidThreadID = 0;
+
+	OSMutex  mOSMutex         = nullptr;
 #ifdef ASSERTS_ENABLED
-	OSThread mLockingThread = nullptr;
+	uint32   mLockingThreadID = cInvalidThreadID;
 #endif
+
+	friend struct ConditionVariable;
 };
 
 
@@ -57,6 +62,10 @@ struct LockGuard : NoCopy
 		mMutex->Unlock();
 	}
 
+	const Mutex* GetMutex() const { return mMutex; }
+
 private:
 	taMutex* mMutex = nullptr;
 };
+
+using MutexLockGuard = LockGuard<Mutex>;

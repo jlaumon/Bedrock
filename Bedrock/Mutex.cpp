@@ -23,26 +23,26 @@ Mutex::~Mutex()
 void Mutex::Lock()
 {
 #ifdef ASSERTS_ENABLED
-	HANDLE current_thread = GetCurrentThread();
-	gAssert(mLockingThread != current_thread); // Recursive locking is not allowed.
+	uint32 current_thread_id = GetCurrentThreadId();
+	gAssert(mLockingThreadID != current_thread_id); // Recursive locking is not allowed.
 #endif
 
 	AcquireSRWLockExclusive((PSRWLOCK)&mOSMutex);
 
 #ifdef ASSERTS_ENABLED
-	mLockingThread = current_thread;
+	mLockingThreadID = current_thread_id;
 #endif
 }
 
 
 void Mutex::Unlock()
 {
-	gAssert(mLockingThread == GetCurrentThread());
+	gAssert(mLockingThreadID == GetCurrentThreadId());
 
 	ReleaseSRWLockExclusive((PSRWLOCK)&mOSMutex);
 
 #ifdef ASSERTS_ENABLED
-	mLockingThread = nullptr;
+	mLockingThreadID = cInvalidThreadID;
 #endif
 }
 
