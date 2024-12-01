@@ -1,6 +1,17 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
+// We want some no-op functions (like gMove or gToUnderlying) to be always inlined, but __forceinline doesn't work in debug in MSVC.
+// [[msvc::intrinsic]] works however, as long as the functions only does a static_cast.
+#ifdef __clang__
+#define ATTRIBUTE_INTRINSIC __forceinline
+#elif _MSC_VER
+#define ATTRIBUTE_INTRINSIC [[msvc::intrinsic]]
+#else
+#define ATTRIBUTE_INTRINSIC
+#endif
+
+
 // Equivalent to std::is_class
 template<class T> constexpr bool cIsClass = __is_class(T);
 
@@ -85,4 +96,11 @@ template<bool B, class T, class F> using Conditional = typename Details::Conditi
 // True if the elements of a container are contiguous in memory.
 // Each contiguous container needs to add its specialization.
 template<class T> constexpr bool cIsContiguous = false;
+
+// Equivalent to std::underlying_type
+template<class T> requires cIsEnum<T> using UnderlyingType = __underlying_type(T);
+
+// Equivalent to std::to_underlying
+template<class taEnum> requires cIsEnum<taEnum>
+[[nodiscard]] ATTRIBUTE_INTRINSIC constexpr auto gToUnderlying(taEnum inEnum) { return static_cast<UnderlyingType<taEnum>>(inEnum); }
 

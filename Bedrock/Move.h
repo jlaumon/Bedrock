@@ -4,16 +4,6 @@
 #include <Bedrock/Core.h>
 #include <Bedrock/TypeTraits.h>
 
-// We want gMove/gForward to be always inlined, even when optimizations are disabled.
-// __forceinline doesn't work in debug in MSVC, but [[msvc::intrinsic]] does (it only works in very specific conditions though).
-#ifdef __clang__
-#define ATTRIBUTE_INTRINSIC __forceinline
-#elif _MSC_VER
-#define ATTRIBUTE_INTRINSIC [[msvc::intrinsic]]
-#else
-#define ATTRIBUTE_INTRINSIC
-#endif
-
 
 // Equivalent to std::move
 template <typename taType>
@@ -30,5 +20,3 @@ template <typename taType>
 	return static_cast<taType&&>(ioArg);
 }
 
-
-#undef ATTRIBUTE_INTRINSIC
