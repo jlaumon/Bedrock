@@ -87,7 +87,7 @@ REGISTER_TEST("Vector")
 		TEST_TRUE(equal(test, expected));
 
 		const int& i2 = 2;
-		test.Insert(2, 2);
+		test.Insert(2, i2);
 		expected = { 0, 1, 2, 3 };
 		TEST_TRUE(equal(test, expected));
 
