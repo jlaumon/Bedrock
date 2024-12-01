@@ -22,16 +22,23 @@ Semaphore::~Semaphore()
 
 bool Semaphore::TryAcquire()
 {
-	return Acquire(0_NS);
+	return TryAcquireFor(0_NS);
 }
 
 
-bool Semaphore::Acquire(NanoSeconds inTimeout)
+bool Semaphore::TryAcquireFor(NanoSeconds inTimeout)
 {
-	int timeout_ms = (inTimeout == cInfiniteTimeout) ? INFINITE : (int)gToMilliSeconds(inTimeout);
+	int timeout_ms = (int)gToMilliSeconds(inTimeout);
 
 	int ret = WaitForSingleObject((HANDLE)mOSSemaphore, timeout_ms);
 	return ret == WAIT_OBJECT_0;
+}
+
+
+void Semaphore::Acquire()
+{
+	int ret = WaitForSingleObject((HANDLE)mOSSemaphore, INFINITE);
+	gAssert(ret == WAIT_OBJECT_0);
 }
 
 
@@ -51,9 +58,9 @@ REGISTER_TEST("Semaphore")
 	TEST_FALSE(sema.TryAcquire());
 
 	sema.Release(2);
-	TEST_TRUE(sema.Acquire());
-	TEST_TRUE(sema.Acquire(1_MS));
-	TEST_FALSE(sema.Acquire(0.01_MS));
+	sema.Acquire();
+	TEST_TRUE(sema.TryAcquireFor(1_MS));
+	TEST_FALSE(sema.TryAcquire());
 	sema.Release(1);
 	TEST_TRUE(sema.TryAcquire());
 };

@@ -10,13 +10,12 @@ using OSSemaphore = void*;
 
 struct Semaphore : NoCopy
 {
-	static constexpr NanoSeconds cInfiniteTimeout = (NanoSeconds)-1;
-
 	Semaphore(int inInitialCount, int inMaxCount);
 	~Semaphore();
 
 	bool TryAcquire();
-	bool Acquire(NanoSeconds inTimeout = cInfiniteTimeout);	// Return true on success, false on timeout.
+	bool TryAcquireFor(NanoSeconds inTimeout);
+	void Acquire();
 	void Release(int inCount = 1);
 
 private:
