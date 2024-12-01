@@ -40,7 +40,7 @@ struct Atomic<int32>
 {
 	Atomic() = default;
 	~Atomic() = default;
-	Atomic(int inValue) : mValue(inValue) {}
+	Atomic(int32 inValue) : mValue(inValue) {}
 
 	Atomic(const Atomic&) = delete;
 	Atomic& operator=(const Atomic&) = delete;
