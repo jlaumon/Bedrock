@@ -29,6 +29,27 @@ constexpr uint64 cMaxUInt64 = 0xFFFFFFFFFFFFFFFF;
 constexpr int    cMaxInt    = cMaxInt32;
 
 
+// Force a function to be inlined.
+// Note: With MSVC this doesn't work in non-optimized builds unless /d2Obforceinline is used.
+#ifdef __clang__
+#define force_inline inline __attribute__((always_inline))
+#elif _MSC_VER
+#define force_inline inline __forceinline
+#else
+#error Unknown compiler
+#endif
+
+
+// Force a function to not be inlined.
+#ifdef __clang__
+#define no_inline __attribute__ ((noinline))
+#elif _MSC_VER
+#define no_inline __declspec(noinline)
+#else
+#error Unknown compiler
+#endif
+
+
 // Preprocessor utilities.
 #define TOKEN_PASTE1(x, y) x ## y
 #define TOKEN_PASTE(x, y) TOKEN_PASTE1(x, y)
@@ -83,7 +104,7 @@ template <typename T> constexpr T gClamp(T inV, T inLow, T inHigh)	{ return (inV
 
 // Helper to get the size of C arrays.
 template<typename taType, int64 taArraySize>
-constexpr int64 gElemCount(const taType (&)[taArraySize]) { return taArraySize; }
+consteval int64 gElemCount(const taType (&)[taArraySize]) { return taArraySize; }
 
 
 // Bit twiddling. Move elsewhere?
@@ -93,8 +114,9 @@ constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValu
 
 
 // Some useful C std function replacements to avoid an include or because the real ones aren't constexpr.
-constexpr int gStrLen(const char* inString)									{ return (int)__builtin_strlen(inString); }
-constexpr int gMemCmp(const void* inPtrA, const void* inPtrB, int inSize)	{ return __builtin_memcmp(inPtrA, inPtrB, inSize); }
-extern "C" void* __cdecl memcpy(void* inDest, void const* inSource, size_t inSize);
-inline void   gMemCopy(void* inDest, const void* inSource, int inSize)		{ memcpy(inDest, inSource, inSize); }
+force_inline constexpr int gStrLen(const char* inString)								{ return (int)__builtin_strlen(inString); }
+force_inline constexpr int gMemCmp(const void* inPtrA, const void* inPtrB, int inSize)	{ return __builtin_memcmp(inPtrA, inPtrB, inSize); }
+extern "C" void* __cdecl   memcpy(void* inDest, void const* inSource, size_t inSize);
+force_inline void		   gMemCopy(void* inDest, const void* inSource, int inSize)		{ memcpy(inDest, inSource, inSize); }
+
 
