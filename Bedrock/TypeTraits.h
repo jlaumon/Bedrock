@@ -39,6 +39,9 @@ template<class T> constexpr bool cHasUniqueObjectRepresentations = __has_unique_
 // Equivalent to std::is_trivially_default_constructible
 template <class T> constexpr bool cIsTriviallyDefaultConstructible = __is_trivially_constructible(T);
 
+// Equivalent to std::is_trivially_copyable
+template <class T> constexpr bool cIsTriviallyCopyable = __is_trivially_copyable(T);
+
 // Equivalent to std::is_const
 namespace Details
 {
@@ -54,6 +57,9 @@ namespace Details
 	template<class T> struct IsSame<T, T> { static constexpr bool cValue = true; };
 }
 template<class T, class U> constexpr bool cIsSame = Details::IsSame<T, U>::cValue;
+
+// True if T is any of the types in taTypes
+template<class T, class... taTypes> constexpr bool cIsAnyOf = (cIsSame<T, taTypes> || ...);
 
 // Equivalent to std::remove_reference
 namespace Details
@@ -74,6 +80,17 @@ namespace Details
 }
 template<class T> using RemoveCV = typename Details::RemoveCV<T>::Type;
 
+// Equivalent to std::remove_pointer
+namespace Details
+{
+	template<class T> struct RemovePointer { using Type = T; };
+	template<class T> struct RemovePointer<T*> { using Type = T; };
+	template<class T> struct RemovePointer<T* const> { using Type = T; };
+	template<class T> struct RemovePointer<T* volatile> { using Type = T; };
+	template<class T> struct RemovePointer<T* const volatile> { using Type = T; };
+}
+template<class T> using RemovePointer = typename Details::RemovePointer<T>::Type;
+
 // Equivalent to std::is_lvalue_reference
 namespace Details
 {
@@ -84,6 +101,17 @@ template<class T> constexpr bool cIsLValueReference = Details::IsConst<T>::cValu
 
 // Equivalent to std::is_void
 template<class T> constexpr bool cIsVoid = cIsSame<void, RemoveCV<T>>;
+
+// Equivalent to std::is_pointer
+namespace Details
+{
+	template<class T> struct IsPointer	{ static constexpr bool cValue = false; };
+	template<class T> struct IsPointer<T*> { static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* const> { static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* volatile> { static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* const volatile> { static constexpr bool cValue = true; };
+}
+template<class T> constexpr bool cIsPointer = Details::IsPointer<T>::cValue;
 
 // Equivalent to std::conditional
 namespace Details
@@ -103,4 +131,8 @@ template<class T> requires cIsEnum<T> using UnderlyingType = __underlying_type(T
 // Equivalent to std::to_underlying
 template<class taEnum> requires cIsEnum<taEnum>
 [[nodiscard]] ATTRIBUTE_INTRINSIC constexpr auto gToUnderlying(taEnum inEnum) { return static_cast<UnderlyingType<taEnum>>(inEnum); }
+
+// Equivalent to std::is_integral
+template<class T> constexpr bool cIsIntegral = cIsAnyOf<RemoveCV<T>, bool, char, signed char, unsigned char, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long>;
+
 
