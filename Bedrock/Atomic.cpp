@@ -15,7 +15,7 @@ static void sTestAtomic(Atomic<taType>& ioAtomic, MemoryOrder inMemoryOrder, aut
 
 	TEST_TRUE(ioAtomic.Exchange(inA, inMemoryOrder) == inB);
 
-	if constexpr (!cIsSame<taType, bool>)
+	if constexpr (cIsIntegral<taType> && !cIsSame<taType, bool>)
 	{
 		TEST_TRUE(ioAtomic.Add(inB, inMemoryOrder) == inA);
 		TEST_TRUE(ioAtomic.Load(inMemoryOrder) == inA + inB);
@@ -46,6 +46,23 @@ REGISTER_TEST("AtomicInt32")
 };
 
 
+REGISTER_TEST("AtomicInt8")
+{
+	AtomicInt8 atomic;
+
+	sTestAtomic(atomic, MemoryOrder::Relaxed, 42, 20);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, 42, 20);
+};
+
+
+REGISTER_TEST("AtomicInt64")
+{
+	AtomicInt64 atomic;
+
+	sTestAtomic(atomic, MemoryOrder::Relaxed, (int64)cMaxInt * 10, 1000);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, (int64)cMaxInt * 10, 1000);
+};
+
 
 REGISTER_TEST("AtomicBool")
 {
@@ -53,4 +70,39 @@ REGISTER_TEST("AtomicBool")
 
 	sTestAtomic(atomic, MemoryOrder::Relaxed, true, false);
 	sTestAtomic(atomic, MemoryOrder::SeqCst, true, false);
+};
+
+
+REGISTER_TEST("AtomicObject")
+{
+	struct Test
+	{
+		int mValue;
+
+		bool operator==(const Test&) const = default;
+	};
+	Atomic<Test> atomic;
+
+	sTestAtomic(atomic, MemoryOrder::Relaxed, Test{ 100 }, Test{ 5000 });
+	sTestAtomic(atomic, MemoryOrder::SeqCst, Test{ 100 }, Test{ 5000 });
+};
+
+
+REGISTER_TEST("AtomicPtr")
+{
+	int test;
+	Atomic<int*> atomic;
+
+	sTestAtomic(atomic, MemoryOrder::Relaxed, &test, &test + 100);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, &test, &test + 100);
+};
+
+
+REGISTER_TEST("AtomicEnum")
+{
+	enum class TestEnum : int { A, B };
+	Atomic<TestEnum> atomic;
+
+	sTestAtomic(atomic, MemoryOrder::Relaxed, TestEnum::A, TestEnum::B);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, TestEnum::A, TestEnum::B);
 };
