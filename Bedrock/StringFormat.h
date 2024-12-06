@@ -2,22 +2,23 @@
 #pragma once
 
 #include <Bedrock/Core.h>
-#include <Bedrock/Move.h>
+#include <Bedrock/String.h>
+
+
+// Format a String and return it.
+// Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
+#define gFormat(format, ...) \
+	((void)sizeof(printf(format, __VA_ARGS__)), Details::StringFormatRet<String>(format, __VA_ARGS__))
+
 
 // Format a string into @a output.
-// Output can be any String-like class, it only needs Clear() and Append(const char*, int) methods.
 // Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
-#define gFormat(output, format, ...)                        \
-	do                                                      \
-	{                                                       \
-		(void)sizeof(printf(format, __VA_ARGS__));          \
-		output.Clear();                                     \
-		Details::StringFormat(output, format, __VA_ARGS__); \
-	} while (false)
+#define gTempFormat(format, ...) \
+	((void)sizeof(printf(format, __VA_ARGS__)), Details::StringFormatRet<TempString>(format, __VA_ARGS__))
 
 
 // Format a string and append to @a output.
-// Output can be any String-like class, it only needs Append(const char*, int) methods.
+// Output can be any String-like class, it only needs an Append(const char*, int) method.
 // Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
 #define gAppendFormat(output, format, ...)                  \
 	do                                                      \
@@ -25,6 +26,7 @@
 		(void)sizeof(printf(format, __VA_ARGS__));          \
 		Details::StringFormat(output, format, __VA_ARGS__); \
 	} while (false)
+
 
 
 namespace Details
@@ -50,6 +52,15 @@ namespace Details
 	void StringFormat(taString& outString, const char* inFormat, taArgs&&... ioArgs)
 	{
 		StringFormat(&StringFormatAppendCallback<taString>, &outString, inFormat, gForward<taArgs>(ioArgs)...);
+	}
+
+	// Template function helper to format a string and return it.
+	template <class taString, typename... taArgs>
+	taString StringFormatRet(const char* inFormat, taArgs&&... ioArgs)
+	{
+		taString out_string;
+		StringFormat(out_string, inFormat, gForward<taArgs>(ioArgs)...);
+		return out_string;
 	}
 }
 

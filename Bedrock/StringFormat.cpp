@@ -35,15 +35,22 @@ REGISTER_TEST("StringFormat")
 {
 	TEST_INIT_TEMP_MEMORY(1_KiB);
 
-	TempString test = "test";
-
-	gFormat(test, "hello %s %d", "world", 1);
+	TempString test = gTempFormat("hello %s %d", "world", 1);
 	TEST_TRUE(test == "hello world 1");
 
 	gAppendFormat(test, "%s", "!!");
 	TEST_TRUE(test == "hello world 1!!");
 
-	String test2 = "test";
-	gFormat(test2, "also with %s strings", "non-temp");
+	String test2 = gFormat("also with %s strings", "non-temp");
 	TEST_TRUE(test2 == "also with non-temp strings");
+
+	// TempStrings used in gTempFormat means out of order TempMem frees. Make sure this doesn't assert.
+	TempString concat = gTempFormat("%s %s %s %s %s %s", 
+		TempString("1").AsCStr(),
+		TempString("2").AsCStr(),
+		TempString("3").AsCStr(),
+		TempString("4").AsCStr(),
+		TempString("5").AsCStr(),
+		TempString("6").AsCStr());
+	TEST_TRUE(concat == "1 2 3 4 5 6");
 };
