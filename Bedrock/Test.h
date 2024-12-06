@@ -106,15 +106,10 @@ namespace Details
 		TestScopedTempMemory()
 		{
 			// Save current temp memory setup.
-			mSavedTempMemBegin   = gTempMemBegin;
-			mSavedTempMemEnd     = gTempMemEnd;
-			mSavedTempMemCurrent = gTempMemCurrent;
-
-			gTempMemBegin   = nullptr;
-			gTempMemEnd     = nullptr;
-			gTempMemCurrent = nullptr;
+			mSavedTempMemArena   = gTempMemArena;
 
 			// (Re-)initialize the temp memory with the internal buffer.
+			gTempMemArena = {};
 			gThreadInitTempMemory({ mBuffer, sizeof(mBuffer) });
 		}
 
@@ -126,16 +121,12 @@ namespace Details
 			gAssert(memory.mSize == sizeof(mBuffer));
 
 			// Restore the saved temp memory setup.
-			gTempMemBegin   = mSavedTempMemBegin;
-			gTempMemEnd     = mSavedTempMemEnd;
-			gTempMemCurrent = mSavedTempMemCurrent;
+			gTempMemArena   = mSavedTempMemArena;
 		}
 
-		uint8* mSavedTempMemBegin     = nullptr;
-		uint8* mSavedTempMemEnd       = nullptr;
-		uint8* mSavedTempMemCurrent   = nullptr;
+		TempMemArena mSavedTempMemArena;
 
-		alignas(cTempMemAlignment) uint8 mBuffer[taSize];
+		alignas(TempMemArena::cAlignment) uint8 mBuffer[taSize];
 	};
 }
 

@@ -117,6 +117,8 @@ constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValu
 force_inline constexpr int gStrLen(const char* inString)								{ return (int)__builtin_strlen(inString); }
 force_inline constexpr int gMemCmp(const void* inPtrA, const void* inPtrB, int inSize)	{ return __builtin_memcmp(inPtrA, inPtrB, inSize); }
 extern "C" void* __cdecl   memcpy(void* inDest, void const* inSource, size_t inSize);
+extern "C" void* __cdecl   memmove(void* inDest, void const* inSource, size_t inSize);
 force_inline void		   gMemCopy(void* inDest, const void* inSource, int inSize)		{ memcpy(inDest, inSource, inSize); }
+force_inline void		   gMemMove(void* inDest, const void* inSource, int inSize)		{ memmove(inDest, inSource, inSize); }
 
 

@@ -112,7 +112,7 @@ REGISTER_TEST("Thread")
 		},
 		[&set_by_thread](Thread& ioSelf) 
 		{
-			TEST_TRUE((gTempMemEnd - gTempMemBegin) == 10_KiB);
+			TEST_TRUE(gTempMemArena.GetMemBlock().mSize == 10_KiB);
 
 			set_by_thread = true;
 

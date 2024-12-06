@@ -23,28 +23,20 @@ void gMemFree(MemBlock inMemory)
 
 void gThreadInitTempMemory(MemBlock inMemory)
 {
-	gAssert(gTempMemBegin == nullptr);							// Already initialized.
-	gAssert(((uint64)inMemory.mPtr % cTempMemAlignment) == 0);	// Pointer should be aligned.
-	gAssert((inMemory.mSize % cTempMemAlignment) == 0);			// Size should be aligned.
+	gAssert(gTempMemArena.GetMemBlock() == nullptr); // Already initialized.
 
-	gTempMemBegin      = inMemory.mPtr;
-	gTempMemEnd        = gTempMemBegin + inMemory.mSize;
-	gTempMemCurrent    = gTempMemBegin;
+	gTempMemArena = { inMemory };
 }
 
 
 MemBlock gThreadExitTempMemory()
 {
 	// Everything should be freed before exiting (or not initialized).
-	gAssert(gTempMemCurrent == gTempMemBegin);
+	gAssert(gTempMemArena.GetAllocatedSize() == 0);
 
-	MemBlock memory{ gTempMemBegin, gTempMemEnd - gTempMemBegin };
-
-	gTempMemBegin   = nullptr;
-	gTempMemEnd     = nullptr;
-	gTempMemCurrent = nullptr;
-
-	return memory;
+	MemBlock mem_block = gTempMemArena.GetMemBlock();
+	gTempMemArena      = {};
+	return mem_block;
 }
 
 
