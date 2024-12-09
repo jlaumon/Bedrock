@@ -321,6 +321,9 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 
 template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::ShrinkToFit()
 {
+	if (mCapacity == mSize)
+		return;
+
 	if (taAllocator::TryRealloc(mData, mCapacity, mSize))
 		mCapacity = mSize;
 }

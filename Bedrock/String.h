@@ -163,6 +163,7 @@ StringBase<taAllocator>& StringBase<taAllocator>::operator=(InitializerList<char
 }
 
 
+// Note: inCapacity includes the null terminator.
 template <class taAllocator>
 void StringBase<taAllocator>::Reserve(int inCapacity)
 {
@@ -207,7 +208,7 @@ void StringBase<taAllocator>::Resize(int inSize)
 
 template <class taAllocator> void StringBase<taAllocator>::ShrinkToFit()
 {
-	if (mData == cEmpty)
+	if (mData == cEmpty || mCapacity == (mSize + 1))
 		return;
 
 	if (taAllocator::TryRealloc(mData, mCapacity, mSize + 1))
