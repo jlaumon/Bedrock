@@ -3,8 +3,6 @@
 #include <Bedrock/String.h>
 #include <Bedrock/StringFormat.h>
 
-#include <Bedrock/thirdparty/stb/stb_sprintf.h>
-
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -20,8 +18,9 @@ void Details::Trace(const char* inFormat, ...)
 	va_list args;
 	va_start(args, inFormat);
 
-	TempString string;
-	StringFormat(&StringFormatAppendCallback<TempString>, &string, inFormat, args);
+	TempString string = gTempFormatV(inFormat, args);
+
+	va_end(args);
 
 	// For now just print to stdout.
 	// TODO add timestamps, thread name, log to file, etc.

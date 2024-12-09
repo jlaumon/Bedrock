@@ -5,19 +5,28 @@
 #include <Bedrock/String.h>
 
 
+#ifdef __clang__
+typedef __builtin_va_list va_list;
+#elif _MSC_VER
+typedef char* va_list;
+#else
+#error Unknown compiler
+#endif
+
+
 // Format a String and return it.
 // Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
 #define gFormat(format, ...) \
 	((void)sizeof(printf(format, __VA_ARGS__)), Details::StringFormatRet<String>(format, __VA_ARGS__))
 
 
-// Format a string into @a output.
+// Format a TempString and return it.
 // Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
 #define gTempFormat(format, ...) \
 	((void)sizeof(printf(format, __VA_ARGS__)), Details::StringFormatRet<TempString>(format, __VA_ARGS__))
 
 
-// Format a string and append to @a output.
+// Format and append into @a output.
 // Output can be any String-like class, it only needs an Append(const char*, int) method.
 // Note: The fake call to printf is there to catch format errors. Unlike attribute format, this also works with MSVC.
 #define gAppendFormat(output, format, ...)                  \
@@ -44,14 +53,22 @@ namespace Details
 
 	using StringFormatCallback = char*(*)(const char* inBuffer, void* outString, int inBufferLength);
 
-	// Internal function doing the actual formatting.
+	// Internal functions doing the actual formatting.
 	void StringFormat(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, ...);
+	void StringFormatV(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, va_list inArgs);
 
 	// Template function helper to automatically get the right callback.
 	template <class taString, typename... taArgs>
 	void StringFormat(taString& outString, const char* inFormat, taArgs&&... ioArgs)
 	{
 		StringFormat(&StringFormatAppendCallback<taString>, &outString, inFormat, gForward<taArgs>(ioArgs)...);
+	}
+
+	// Template function helper to automatically get the right callback.
+	template <class taString>
+	void StringFormatV(taString& outString, const char* inFormat, va_list inArgs)
+	{
+		StringFormatV(&StringFormatAppendCallback<taString>, &outString, inFormat, inArgs);
 	}
 
 	// Template function helper to format a string and return it.
@@ -64,6 +81,31 @@ namespace Details
 	}
 }
 
+
+// Variant of gFormat that takes a va_list.
+inline String gFormatV(const char* inFormat, va_list inArgs)
+{
+	String str;
+	Details::StringFormatV(str, inFormat, inArgs);
+	return str;
+}
+
+
+// Variant of gTempFormat that takes a va_list.
+inline TempString gTempFormatV(const char* inFormat, va_list inArgs)
+{
+	TempString str;
+	Details::StringFormatV(str, inFormat, inArgs);
+	return str;
+}
+
+
+// Variant of gAppendFormat that takes a va_list.
+template <typename taString>
+void gAppendFormatV(taString& outString, const char* inFormat, va_list inArgs)
+{
+	Details::StringFormatV(outString, inFormat, inArgs);
+}
 
 
 // Printf forward declaration for the format validation hack above.

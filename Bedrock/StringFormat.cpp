@@ -9,14 +9,10 @@
 #include <Bedrock/thirdparty/stb/stb_sprintf.h>
 
 
-namespace Details
+void Details::StringFormatV(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, va_list inArgs)
 {
-	// The va_list version is kept out of the header to avoid including stdarg.h in the header (or defining it manually) for now.
-	void StringFormat(StringFormatCallback inAppendCallback, void* outString, const char* inFormat, va_list inArgs)
-	{
-		char buffer[STB_SPRINTF_MIN];
-		stbsp_vsprintfcb(inAppendCallback, outString, buffer, inFormat, inArgs);
-	}
+	char buffer[STB_SPRINTF_MIN];
+	stbsp_vsprintfcb(inAppendCallback, outString, buffer, inFormat, inArgs);
 }
 
 
@@ -25,7 +21,8 @@ void Details::StringFormat(StringFormatCallback inAppendCallback, void* outStrin
 	va_list args;
 	va_start(args, inFormat);
 
-	StringFormat(inAppendCallback, outString, inFormat, args);
+	char buffer[STB_SPRINTF_MIN];
+	stbsp_vsprintfcb(inAppendCallback, outString, buffer, inFormat, args);
 
 	va_end(args);
 }
