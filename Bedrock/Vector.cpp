@@ -112,6 +112,11 @@ REGISTER_TEST("Vector")
 		test.Erase(0);
 		expected = { 1, 2, 3, 4, 6, 7, 8, 9 };
 		TEST_TRUE(equal(test, expected));
+
+		TEST_TRUE(test.Capacity() > test.Size());
+		int cap = test.Capacity();
+		test.ShrinkToFit();
+		TEST_TRUE(test.Capacity() == cap); // ShrinkToFit doesn't do anything with a heap allocator (doesn't support TryReallocate)
 	}
 
 	{
@@ -214,4 +219,10 @@ REGISTER_TEST("TempVector")
 	TEST_TRUE(test.Begin() == test_begin);
 	TEST_TRUE(test.Begin() != non_temp.Begin());
 	TEST_TRUE(Span(test) == Span(non_temp));
+
+	test.PushBack(1);
+	test.PopBack();
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size());
 };

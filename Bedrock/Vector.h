@@ -81,6 +81,7 @@ struct Vector : private taAllocator
 	void ClearAndFreeMemory();
 	void Reserve(int inCapacity);
 	void Resize(int inNewSize, EResizeInit inInit = EResizeInit::ZeroInit);
+	void ShrinkToFit();				// Note: Only does somethig if the allocator supports TryRealloc (eg. TempAllocator).
 
 	void Insert(int inPosition, const taType& inValue);
 	void Insert(int inPosition, taType&& inValue);
@@ -255,7 +256,7 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 	mCapacity = inCapacity;
 
 	// Try to grow the allocation.
-	if (taAllocator::TryGrow(mData, old_capacity, mCapacity))
+	if (taAllocator::TryRealloc(mData, old_capacity, mCapacity))
 		return; // Success, nothing else to do.
 
 	// Allocate new data.
@@ -315,6 +316,13 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 		// Update the size.
 		mSize = inNewSize;
 	}
+}
+
+
+template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::ShrinkToFit()
+{
+	if (taAllocator::TryRealloc(mData, mCapacity, mSize))
+		mCapacity = mSize;
 }
 
 

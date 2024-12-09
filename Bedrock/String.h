@@ -60,6 +60,7 @@ struct StringBase : StringView, private taAllocator
 	void Reserve(int inCapacity);	// Note: inCapacity includes the null terminator.
 	void Resize(int inSize);		// Note: inSize does not include the null terminator (it is stored at [Size()]).
 	void Clear() { Resize(0); }
+	void ShrinkToFit();				// Note: Only does somethig if the allocator supports TryRealloc (eg. TempAllocator).
 
 	int Capacity() const { return mCapacity; }
 
@@ -169,7 +170,7 @@ void StringBase<taAllocator>::Reserve(int inCapacity)
 	gAssert(inCapacity > 1); // Reserving for storing an empty string? That should not happen.
 
 	// Try to grow the allocation.
-	if (taAllocator::TryGrow(mData, old_capacity, mCapacity))
+	if (taAllocator::TryRealloc(mData, old_capacity, mCapacity))
 		return; // Success, nothing else to do.
 
 	// Allocate new data.
@@ -196,6 +197,16 @@ void StringBase<taAllocator>::Resize(int inSize)
 
 	mData[inSize] = 0;
 	mSize         = inSize;
+}
+
+
+template <class taAllocator> void StringBase<taAllocator>::ShrinkToFit()
+{
+	if (mData == cEmpty)
+		return;
+
+	if (taAllocator::TryRealloc(mData, mCapacity, mSize + 1))
+		mCapacity = mSize + 1;
 }
 
 

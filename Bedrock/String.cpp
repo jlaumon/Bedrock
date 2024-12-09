@@ -76,6 +76,11 @@ REGISTER_TEST("String")
 	test.RemoveSuffix(4);
 	TEST_TRUE(test == "testt");
 	TEST_TRUE(*test.End() == 0);
+	
+	TEST_TRUE(test.Capacity() > test.Size());
+	int cap = test.Capacity();
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == cap); // ShrinkToFit doesn't do anything with a heap allocator (doesn't support TryReallocate)
 };
 
 
@@ -108,4 +113,10 @@ REGISTER_TEST("TempString")
 	TEST_TRUE(test.Begin() == test_begin);
 	TEST_TRUE(test.Begin() != non_temp.Begin());
 	TEST_TRUE(test == non_temp);
+
+	test.Append("add");
+	test.RemoveSuffix(3);
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size() + 1);
 };

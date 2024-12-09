@@ -12,8 +12,8 @@ struct Allocator
 	static taType*	Allocate(int64 inSize)					{ return (taType*)gMemAlloc(inSize * sizeof(taType)).mPtr; }
 	static void		Free(taType* inPtr, int64 inSize)		{ return gMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
-	// Try growing an existing allocation, return false if unsuccessful.
-	static bool		TryGrow(taType* inPtr, int64 inCurrentSize, int64 inNewSize)	{ return false; }
+	// Try changing the size of an existing allocation, return false if unsuccessful.
+	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)	{ return false; }
 };
 
 
@@ -26,8 +26,8 @@ struct TempAllocator : Allocator<taType>
 	static taType*	Allocate(int64 inSize);
 	static void     Free(taType* inPtr, int64 inSize);
 
-	// Try growing an existing allocation, return false if unsuccessful.
-	static bool		TryGrow(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+	// Try changing the size of an existing allocation, return false if unsuccessful.
+	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
 };
 
 
@@ -54,7 +54,7 @@ void TempAllocator<taType>::Free(taType* inPtr, int64 inSize)
 
 
 template <typename taType>
-bool TempAllocator<taType>::TryGrow(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+bool TempAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
 {
 	if (gIsTempMem(inPtr))
 	{
@@ -62,7 +62,7 @@ bool TempAllocator<taType>::TryGrow(taType* inPtr, int64 inCurrentSize, int64 in
 		return gTempMemTryRealloc(mem, inNewSize * (int64)sizeof(taType));
 	}
 	
-	return Allocator<taType>::TryGrow(inPtr, inCurrentSize, inNewSize);
+	return Allocator<taType>::TryRealloc(inPtr, inCurrentSize, inNewSize);
 }
 
 
