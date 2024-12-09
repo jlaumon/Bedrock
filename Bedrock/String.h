@@ -54,6 +54,11 @@ struct StringBase : StringView, private taAllocator
 	using StringView::begin;
 	using StringView::end;
 
+	constexpr char& Front() { gAssert(mSize > 0); return mData[0]; }
+	constexpr char& Back() { gAssert(mSize > 0); return mData[mSize - 1]; }
+	using StringView::Front;
+	using StringView::Back;
+
 	char& operator[](int inPosition) { gBoundsCheck(inPosition, mSize); return mData[inPosition]; }
 	using StringView::operator[];
 
