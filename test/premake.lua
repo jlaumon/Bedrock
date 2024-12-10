@@ -31,11 +31,7 @@ solution "BedrockTest"
 			
 		filter { "configurations:DebugASAN" }
 			targetsuffix "DebugASAN"
-			defines 
-			{
-				"ASSERTS_ENABLED",
-				"STBSP__ASAN=__declspec(no_sanitize_address)", -- stb sprintf needs to disable ASAN but doesn't define the correct macro for MSVC... pull prequest pending for 2+ years...
-			}
+			defines "ASSERTS_ENABLED"
 			optimize "Debug"
 			editandcontinue "Off"	  -- incompatible with ASAN
 			flags "NoIncrementalLink" -- incompatible with ASAN

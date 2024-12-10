@@ -9,11 +9,11 @@ REGISTER_TEST("Vector")
 	// YOLO compare function.
 	auto equal = [](const auto& a, const auto& b) -> bool
 	{
-		if (a.Size() != b.size())
+		if (a.Size() != b.Size())
 			return false;
 
 		for (int i = 0; i < a.Size(); i++)
-			if (*(a.Begin() + i) != *(b.begin() + i))
+			if (*(a.Begin() + i) != *(b.Begin() + i))
 				return false;
 
 		return true;
@@ -44,7 +44,7 @@ REGISTER_TEST("Vector")
 		test_structs.PushBack(TestStruct{ 2 });
 		TEST_TRUE(test_structs.Size() == 3);
 		TEST_TRUE(test_structs.Capacity() >= 3);
-		auto expected = { 0, 1, 2 };
+		Vector<int> expected = { 0, 1, 2 };
 		TEST_TRUE(equal(test_structs, expected));
 
 		struct MovableOnly : TestStruct, NoCopy
@@ -83,7 +83,7 @@ REGISTER_TEST("Vector")
 	{
 		Vector<int> test = { 0, 3 };
 		test.Emplace(1, 1);
-		auto expected = { 0, 1, 3 };
+		Vector<int> expected = { 0, 1, 3 };
 		TEST_TRUE(equal(test, expected));
 
 		const int& i2 = 2;
@@ -159,7 +159,7 @@ REGISTER_TEST("Vector")
 		};
 
 		Vector<CopyMoveTest> test = { "0", "1", "2" };
-		auto expected = { "0_CopyConstructed", "1_CopyConstructed", "2_CopyConstructed" };
+		Vector<StringView> expected = { "0_CopyConstructed", "1_CopyConstructed", "2_CopyConstructed" };
 		TEST_TRUE(equal(test, expected));
 
 		test.Reserve(10);
