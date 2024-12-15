@@ -12,6 +12,7 @@ void gThreadInitTempMemory(MemBlock inMemory);
 [[nodiscard]] MemBlock gThreadExitTempMemory();
 
 // Thread-local arena that can be used for allocating temporary memory.
-inline thread_local MemArena gTempMemArena;
+using TempMemArena = MemArena<>;
+inline thread_local TempMemArena gTempMemArena;
 
 

@@ -33,5 +33,12 @@ bool gReportAssert(const char* inCondition, const char* inFile, int inLine)
 	return true;
 }
 
-
 #endif
+
+
+void gCrash(const char* inMessage)
+{
+	gTrace("%s", inMessage);
+
+	CRASH;
+}

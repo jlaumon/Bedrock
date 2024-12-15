@@ -2,7 +2,18 @@
 #pragma once
 
 // Break to the debugger (or crash if no debugger is attached).
-#define breakpoint __debugbreak()
+#define BREAKPOINT __debugbreak()
+
+// Cause a crash.
+#ifdef __clang__
+#define CRASH __builtin_trap()
+#elif _MSC_VER
+extern "C" void __ud2();
+#define CRASH __ud2()
+#else
+#error Unknown compiler
+#endif
+
 
 #ifdef ASSERTS_ENABLED
 
@@ -11,7 +22,7 @@
 	do                                                                                  \
 	{                                                                                   \
 		if (!(condition) && gReportAssert(#condition, __FILE__, __LINE__)) [[unlikely]] \
-			breakpoint;                                                                 \
+			BREAKPOINT;                                                                 \
 	} while (0)
 
 // Internal assert report function. Return true if it should break.
@@ -27,6 +38,5 @@ bool gReportAssert(const char* inCondition, const char* inFile, int inLine);
 #define gBoundsCheck(index, size) gAssert((index) >= 0 && (index) < (size))
 
 
-// Force a crash.
-// TODO: This needs to be improved. Do something with the message, do a proper crash instead of a breakpoint.
-[[noreturn]] inline void gCrash(const char* inMessage) { breakpoint; }
+// Print a message then crash.
+[[noreturn]] void gCrash(const char* inMessage);

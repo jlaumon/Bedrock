@@ -128,9 +128,9 @@ namespace Details
 			gTempMemArena   = gMove(mSavedTempMemArena);
 		}
 
-		MemArena mSavedTempMemArena;
+		TempMemArena mSavedTempMemArena;
 
-		alignas(MemArena::cAlignment) uint8 mBuffer[taSize];
+		alignas(TempMemArena::cAlignment) uint8 mBuffer[taSize];
 	};
 }
 

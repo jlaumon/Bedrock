@@ -67,7 +67,7 @@ TestResult gRunTests()
 
 			// If a debugger is attached, break to make sure it's noticed.
 			if (gIsDebuggerAttached())
-				breakpoint;
+				BREAKPOINT;
 		}
 
 		gTrace(R"(Test "%s" finished: %s (%.2f ms))", 
@@ -91,7 +91,7 @@ void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int 
 
 	// If a debugger is attached, break here.
 	if (gIsDebuggerAttached())
-		breakpoint;
+		BREAKPOINT;
 }
 
 

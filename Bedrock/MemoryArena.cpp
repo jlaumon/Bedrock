@@ -2,109 +2,11 @@
 #include <Bedrock/MemoryArena.h>
 #include <Bedrock/Test.h>
 
-void MemArena::AddPendingFree(FreeBlock inFreeBlock)
-{
-	for (int i = 0; i < mNumPendingFrees; i++)
-	{
-		if (inFreeBlock.mEndOffset < mPendingFrees[i].BeginOffset())
-		{
-			// Inserting before.
-			if (mNumPendingFrees == cMaxPendingFrees) [[unlikely]]
-				gCrash("MemArena: too many out of order frees");
-
-			// Move all the blocks towards the back to make room.
-			gMemMove(&mPendingFrees[i + 1], &mPendingFrees[i], sizeof(FreeBlock) * (mNumPendingFrees - i));
-
-			// Place the new block.
-			mPendingFrees[i] = inFreeBlock;
-			mNumPendingFrees++;
-
-			return;
-		}
-
-		if (inFreeBlock.mEndOffset == mPendingFrees[i].BeginOffset())
-		{
-			// Inserting just before, merge instead.
-			mPendingFrees[i].mSize += inFreeBlock.mSize;
-
-			return;
-		}
-
-		if (inFreeBlock.BeginOffset() == mPendingFrees[i].mEndOffset)
-		{
-			// Inserting just after, merge instead.
-			mPendingFrees[i].mEndOffset = inFreeBlock.mEndOffset;
-			mPendingFrees[i].mSize += inFreeBlock.mSize;
-
-			// Check if the next block can be merged as well now.
-			if ((i + 1) < mNumPendingFrees)
-			{
-				if (mPendingFrees[i].mEndOffset == mPendingFrees[i + 1].BeginOffset())
-				{
-					// Merge the next block.
-					mPendingFrees[i].mEndOffset = mPendingFrees[i + 1].mEndOffset;
-					mPendingFrees[i].mSize += mPendingFrees[i + 1].mSize;
-
-					// Move all the following blocks towards the front to fill the gap.
-					gMemMove(&mPendingFrees[i + 1], &mPendingFrees[i + 2], sizeof(FreeBlock) * (mNumPendingFrees - 2 - i));
-					mNumPendingFrees--;
-				}
-			}
-
-			return;
-		}
-	}
-
-	// Otherwise add it at the back of the list.
-	if (mNumPendingFrees == cMaxPendingFrees)
-		gCrash("MemArena: too many out of order frees");
-
-	mPendingFrees[mNumPendingFrees] = inFreeBlock;
-	mNumPendingFrees++;
-}
-
-
-void MemArena::TryRemovePendingFrees()
-{
-	if (mNumPendingFrees == 0)
-		return;
-
-	// Pending blocks are sorted and coalesced, so we only need to check the last one.
-	if (mPendingFrees[mNumPendingFrees - 1].mEndOffset == mCurrentOffset)
-	{
-		// Free it.
-		mCurrentOffset -= mPendingFrees[mNumPendingFrees - 1].mSize;
-		mNumPendingFrees--;
-	}
-}
-
-
-VMemArena::~VMemArena()
-{
-	FreeReserved();
-}
-
-void VMemArena::CommitMore(int inNewEndOffset)
-{
-	gAssert(inNewEndOffset > mEndOffset);
-
-	int64    commit_size   = gMax(mCommitIncreaseSize, (inNewEndOffset - mEndOffset));
-	MemBlock committed_mem = gVMemCommit({ mBeginPtr + mEndOffset, commit_size });
-
-	mEndOffset = (int)(committed_mem.mPtr + committed_mem.mSize - mBeginPtr);
-}
-
-void VMemArena::FreeReserved()
-{
-	if (mBeginPtr != nullptr)
-		gVMemFree({ mBeginPtr, mEndReservedOffset });
-}
-
 
 
 REGISTER_TEST("MemArena")
 {
-	alignas(MemArena::cAlignment) uint8 buffer[MemArena::cAlignment * 5];
+	alignas(MemArena<>::cAlignment) uint8 buffer[MemArena<>::cAlignment * 5];
 	MemArena arena({ buffer, sizeof(buffer) });
 
 	MemBlock b1 = arena.Alloc(1);

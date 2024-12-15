@@ -33,13 +33,14 @@ struct TempAllocator
 };
 
 
-
 // Allocates from an externally provided MemArena.
-template <typename taType>
-struct ArenaAllocator
+template <typename taType, int taMaxPendingFrees>
+struct ArenaAllocatorBase
 {
-	ArenaAllocator() = default;
-	ArenaAllocator(MemArena& inArena) : mArena(&inArena) {}
+	using MemArenaType = MemArena<taMaxPendingFrees>;
+
+	ArenaAllocatorBase() = default;
+	ArenaAllocatorBase(MemArenaType& inArena) : mArena(&inArena) {}
 
 	// Allocate memory.
 	taType*			Allocate(int inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
@@ -48,13 +49,17 @@ struct ArenaAllocator
 	// Try changing the size of an existing allocation, return false if unsuccessful.
 	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
-	MemArena*		GetArena()							{ return mArena; }
-	const MemArena* GetArena() const					{ return mArena; }
+	MemArenaType*		GetArena()							{ return mArena; }
+	const MemArenaType* GetArena() const					{ return mArena; }
 
 private:
-	MemArena*		mArena = nullptr;
+	MemArenaType*		mArena = nullptr;
 };
 
+// Shorter version with default number of allowed out of order frees.
+// This alias is needed because containers only accept alloctor with a single template parameter.
+template <typename taType>
+using ArenaAllocator = ArenaAllocatorBase<taType, cDefaultMaxPendingFrees>;
 
 
 // Allocates from an internal VMemArena which uses virtual memory.
@@ -62,8 +67,10 @@ private:
 template <typename taType>
 struct VMemAllocator
 {
-	static constexpr int64 cDefaultReservedSize = VMemArena::cDefaultReservedSize; // By default the arena will reserve that much virtual memory.
-	static constexpr int64 cDefaultCommitSize   = VMemArena::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
+	using VMemArenaType = VMemArena<0>; // Don't need to support any out of order free since the arena isn't shared.
+
+	static constexpr int64 cDefaultReservedSize = VMemArenaType::cDefaultReservedSize; // By default the arena will reserve that much virtual memory.
+	static constexpr int64 cDefaultCommitSize   = VMemArenaType::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
 
 	VMemAllocator() = default;
 	VMemAllocator(int inReserveSizeInBytes, int inCommitIncreaseSizeInBytes = cDefaultCommitSize)
@@ -77,7 +84,7 @@ struct VMemAllocator
 	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
 private:
-	VMemArena		mArena;
+	VMemArenaType	mArena;
 };
 
 
@@ -118,8 +125,8 @@ bool TempAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inN
 }
 
 
-template <typename taType> bool
-ArenaAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
+template <typename taType, int taMaxPendingFrees>
+bool ArenaAllocatorBase<taType, taMaxPendingFrees>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
@@ -128,17 +135,20 @@ ArenaAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSi
 }
 
 
-template <typename taType> taType* VMemAllocator<taType>::Allocate(int inSize)
+template <typename taType>
+taType* VMemAllocator<taType>::Allocate(int inSize)
 {
 	// If the arena wasn't initialized yet, do it now (with default values).
 	// It's better to do it lazily than reserving virtual memory in every container default constructor.
 	if (mArena.GetMemBlock() == nullptr) [[unlikely]]
-		mArena = VMemArena(cDefaultReservedSize, cDefaultCommitSize);
+		mArena = VMemArenaType(cDefaultReservedSize, cDefaultCommitSize);
 
 	return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr;
 }
 
-template <typename taType> bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
+
+template <typename taType>
+bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
