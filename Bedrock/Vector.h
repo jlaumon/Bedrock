@@ -272,7 +272,7 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 	if (mCapacity >= inCapacity)
 		return;
 
-	int64 old_capacity = mCapacity;
+	int old_capacity = mCapacity;
 	mCapacity = inCapacity;
 
 	// Try to grow the allocation.

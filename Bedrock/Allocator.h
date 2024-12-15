@@ -10,11 +10,11 @@ template <typename taType>
 struct DefaultAllocator
 {
 	// Allocate memory.
-	static taType*	Allocate(int64 inSize)					{ return (taType*)gMemAlloc(inSize * sizeof(taType)).mPtr; }
-	static void		Free(taType* inPtr, int64 inSize)		{ gMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	static taType*	Allocate(int inSize)				{ return (taType*)gMemAlloc(inSize * sizeof(taType)).mPtr; }
+	static void		Free(taType* inPtr, int inSize)		{ gMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)	{ gAssert(inPtr != nullptr); return false; }
+	static bool		TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)	{ gAssert(inPtr != nullptr); return false; }
 };
 
 
@@ -25,11 +25,11 @@ template <typename taType>
 struct TempAllocator
 {
 	// Allocate memory.
-	static taType*	Allocate(int64 inSize);
-	static void     Free(taType* inPtr, int64 inSize);
+	static taType*	Allocate(int inSize);
+	static void     Free(taType* inPtr, int inSize);
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+	static bool		TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 };
 
 
@@ -42,11 +42,11 @@ struct ArenaAllocator
 	ArenaAllocator(MemArena& inArena) : mArena(&inArena) {}
 
 	// Allocate memory.
-	taType*			Allocate(int64 inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
-	void			Free(taType* inPtr, int64 inSize)	{ mArena->Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	taType*			Allocate(int inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
+	void			Free(taType* inPtr, int inSize)	{ mArena->Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	bool			TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
 	MemArena*		GetArena()							{ return mArena; }
 	const MemArena* GetArena() const					{ return mArena; }
@@ -66,15 +66,15 @@ struct VMemAllocator
 	static constexpr int64 cDefaultCommitSize   = VMemArena::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
 
 	VMemAllocator() = default;
-	VMemAllocator(int64 inReserveSizeInBytes, int64 inCommitIncreaseSizeInBytes = cDefaultCommitSize)
+	VMemAllocator(int inReserveSizeInBytes, int inCommitIncreaseSizeInBytes = cDefaultCommitSize)
 		: mArena(inReserveSizeInBytes, inCommitIncreaseSizeInBytes) {}
 
 	// Allocate memory.
-	taType*			Allocate(int64 inSize);
-	void			Free(taType* inPtr, int64 inSize)	{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	taType*			Allocate(int inSize);
+	void			Free(taType* inPtr, int inSize)	{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	bool			TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
 private:
 	VMemArena		mArena;
@@ -82,7 +82,7 @@ private:
 
 
 template <typename taType>
-taType* TempAllocator<taType>::Allocate(int64 inSize)
+taType* TempAllocator<taType>::Allocate(int inSize)
 {
 	MemBlock mem = gTempMemArena.Alloc(inSize * sizeof(taType));
 
@@ -94,7 +94,7 @@ taType* TempAllocator<taType>::Allocate(int64 inSize)
 
 
 template <typename taType>
-void TempAllocator<taType>::Free(taType* inPtr, int64 inSize)
+void TempAllocator<taType>::Free(taType* inPtr, int inSize)
 {
 	if (gTempMemArena.Owns(inPtr)) [[likely]]
 		gTempMemArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) });
@@ -104,14 +104,14 @@ void TempAllocator<taType>::Free(taType* inPtr, int64 inSize)
 
 
 template <typename taType>
-bool TempAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+bool TempAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
 	if (gTempMemArena.Owns(inPtr)) [[likely]]
 	{
 		MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
-		return gTempMemArena.TryRealloc(mem, inNewSize * (int64)sizeof(taType));
+		return gTempMemArena.TryRealloc(mem, inNewSize * sizeof(taType));
 	}
 	
 	return DefaultAllocator<taType>::TryRealloc(inPtr, inCurrentSize, inNewSize);
@@ -119,16 +119,16 @@ bool TempAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64
 
 
 template <typename taType> bool
-ArenaAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+ArenaAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
 	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
-	return mArena->TryRealloc(mem, inNewSize * (int64)sizeof(taType));
+	return mArena->TryRealloc(mem, inNewSize * sizeof(taType));
 }
 
 
-template <typename taType> taType* VMemAllocator<taType>::Allocate(int64 inSize)
+template <typename taType> taType* VMemAllocator<taType>::Allocate(int inSize)
 {
 	// If the arena wasn't initialized yet, do it now (with default values).
 	// It's better to do it lazily than reserving virtual memory in every container default constructor.
@@ -138,10 +138,10 @@ template <typename taType> taType* VMemAllocator<taType>::Allocate(int64 inSize)
 	return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr;
 }
 
-template <typename taType> bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+template <typename taType> bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
 	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
-	return mArena.TryRealloc(mem, inNewSize * (int64)sizeof(taType));
+	return mArena.TryRealloc(mem, inNewSize * sizeof(taType));
 }

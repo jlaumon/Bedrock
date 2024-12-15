@@ -6,7 +6,7 @@ void MemArena::AddPendingFree(FreeBlock inFreeBlock)
 {
 	for (int i = 0; i < mNumPendingFrees; i++)
 	{
-		if (inFreeBlock.mEnd < mPendingFrees[i].Begin())
+		if (inFreeBlock.mEndOffset < mPendingFrees[i].BeginOffset())
 		{
 			// Inserting before.
 			if (mNumPendingFrees == cMaxPendingFrees) [[unlikely]]
@@ -22,7 +22,7 @@ void MemArena::AddPendingFree(FreeBlock inFreeBlock)
 			return;
 		}
 
-		if (inFreeBlock.mEnd == mPendingFrees[i].Begin())
+		if (inFreeBlock.mEndOffset == mPendingFrees[i].BeginOffset())
 		{
 			// Inserting just before, merge instead.
 			mPendingFrees[i].mSize += inFreeBlock.mSize;
@@ -30,19 +30,19 @@ void MemArena::AddPendingFree(FreeBlock inFreeBlock)
 			return;
 		}
 
-		if (inFreeBlock.Begin() == mPendingFrees[i].mEnd)
+		if (inFreeBlock.BeginOffset() == mPendingFrees[i].mEndOffset)
 		{
 			// Inserting just after, merge instead.
-			mPendingFrees[i].mEnd = inFreeBlock.mEnd;
+			mPendingFrees[i].mEndOffset = inFreeBlock.mEndOffset;
 			mPendingFrees[i].mSize += inFreeBlock.mSize;
 
 			// Check if the next block can be merged as well now.
 			if ((i + 1) < mNumPendingFrees)
 			{
-				if (mPendingFrees[i].mEnd == mPendingFrees[i + 1].Begin())
+				if (mPendingFrees[i].mEndOffset == mPendingFrees[i + 1].BeginOffset())
 				{
 					// Merge the next block.
-					mPendingFrees[i].mEnd = mPendingFrees[i + 1].mEnd;
+					mPendingFrees[i].mEndOffset = mPendingFrees[i + 1].mEndOffset;
 					mPendingFrees[i].mSize += mPendingFrees[i + 1].mSize;
 
 					// Move all the following blocks towards the front to fill the gap.
@@ -70,10 +70,10 @@ void MemArena::TryRemovePendingFrees()
 		return;
 
 	// Pending blocks are sorted and coalesced, so we only need to check the last one.
-	if (mPendingFrees[mNumPendingFrees - 1].mEnd == mCurrent)
+	if (mPendingFrees[mNumPendingFrees - 1].mEndOffset == mCurrentOffset)
 	{
 		// Free it.
-		mCurrent -= mPendingFrees[mNumPendingFrees - 1].mSize;
+		mCurrentOffset -= mPendingFrees[mNumPendingFrees - 1].mSize;
 		mNumPendingFrees--;
 	}
 }
@@ -84,20 +84,20 @@ VMemArena::~VMemArena()
 	FreeReserved();
 }
 
-void VMemArena::CommitMore(uint8* inNewEnd)
+void VMemArena::CommitMore(int inNewEndOffset)
 {
-	gAssert(inNewEnd > mEnd);
+	gAssert(inNewEndOffset > mEndOffset);
 
-	int64    commit_size   = gMax(mCommitIncreaseSize, (inNewEnd - mEnd));
-	MemBlock committed_mem = gVMemCommit({ mEnd, commit_size });
+	int64    commit_size   = gMax(mCommitIncreaseSize, (inNewEndOffset - mEndOffset));
+	MemBlock committed_mem = gVMemCommit({ mBeginPtr + mEndOffset, commit_size });
 
-	mEnd = committed_mem.mPtr + committed_mem.mSize;
+	mEndOffset = (int)(committed_mem.mPtr + committed_mem.mSize - mBeginPtr);
 }
 
 void VMemArena::FreeReserved()
 {
-	if (mBegin != nullptr)
-		gVMemFree({ mBegin, mEndReserved - mBegin });
+	if (mBeginPtr != nullptr)
+		gVMemFree({ mBeginPtr, mEndReservedOffset });
 }
 
 

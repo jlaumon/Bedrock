@@ -174,7 +174,7 @@ void StringBase<taAllocator>::Reserve(int inCapacity)
 	if (mCapacity >= inCapacity)
 		return; // Capacity is already enough, early out.
 
-	int64 old_capacity = mCapacity;
+	int old_capacity = mCapacity;
 	mCapacity = inCapacity;
 
 	gAssert(inCapacity > 1); // Reserving for storing an empty string? That should not happen.

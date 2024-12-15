@@ -27,15 +27,15 @@ struct MemArena
 	{
 		gAssert(GetAllocatedSize() == 0);
 
-		mBegin           = ioOther.mBegin;
-		mEnd             = ioOther.mEnd;
-		mCurrent         = ioOther.mCurrent;
+		mBeginPtr        = ioOther.mBeginPtr;
+		mEndOffset       = ioOther.mEndOffset;
+		mCurrentOffset   = ioOther.mCurrentOffset;
 		mNumPendingFrees = ioOther.mNumPendingFrees;
 		gMemCopy(mPendingFrees, ioOther.mPendingFrees, mNumPendingFrees * sizeof(FreeBlock));
 
-		ioOther.mBegin           = nullptr;
-		ioOther.mEnd             = nullptr;
-		ioOther.mCurrent         = nullptr;
+		ioOther.mBeginPtr        = nullptr;
+		ioOther.mEndOffset       = 0;
+		ioOther.mCurrentOffset   = 0;
 		ioOther.mNumPendingFrees = 0;
 
 		return *this;
@@ -44,35 +44,35 @@ struct MemArena
 	// Initialize this arena with a memory block.
 	MemArena(MemBlock inMemory)
 	{
-		gAssert(mBegin == nullptr);							// Already initialized.
+		gAssert(mBeginPtr == nullptr);						// Already initialized.
 		gAssert(((uint64)inMemory.mPtr % cAlignment) == 0);	// Pointer should be aligned.
 		gAssert((inMemory.mSize % cAlignment) == 0);		// Size should be aligned.
 
-		mBegin      = inMemory.mPtr;
-		mEnd        = mBegin + inMemory.mSize;
-		mCurrent    = mBegin;
+		mBeginPtr      = inMemory.mPtr;
+		mEndOffset     = (int)inMemory.mSize;
+		mCurrentOffset = 0;
 	}
 
 	// Get this arena's entire memory block.
 	MemBlock GetMemBlock() const
 	{
-		return { mBegin, mEnd - mBegin };
+		return { mBeginPtr, mEndOffset };
 	}
 
 	// Allocate memory.
-	MemBlock Alloc(int64 inSize)
+	MemBlock Alloc(int inSize)
 	{
-		gAssert(mBegin != nullptr); // Need to initialize with a MemBlock first.
+		gAssert(mBeginPtr != nullptr); // Need to initialize with a MemBlock first.
 
-		int64  aligned_size = gAlignUp(inSize, cAlignment);
-		uint8* current      = mCurrent;
+		int aligned_size   = (int)gAlignUp(inSize, cAlignment);
+		int current_offset = mCurrentOffset;
 
-		if (current + aligned_size > mEnd)
+		if (current_offset + aligned_size > mEndOffset)
 			return {}; // Allocation failed.
 
-		mCurrent += aligned_size;
+		mCurrentOffset += aligned_size;
 
-		return { current, inSize };
+		return { mBeginPtr + current_offset, inSize };
 	}
 
 	// Free memory. inMemory should be the last allocation, or the arena should support enough out-of-order frees.
@@ -82,13 +82,13 @@ struct MemArena
 		gAssert(inMemory.mSize > 0);
 		gAssert(Owns(inMemory.mPtr));
 
-		int64  aligned_size = gAlignUp(inMemory.mSize, cAlignment);
-		uint8* end_ptr      = inMemory.mPtr + aligned_size;
+		int aligned_size = (int)gAlignUp(inMemory.mSize, cAlignment);
+		int end_offset   = (int)(inMemory.mPtr + aligned_size - mBeginPtr);
 
 		// If it's the last alloc, free immediately.
-		if (end_ptr == mCurrent) [[likely]]
+		if (end_offset == mCurrentOffset) [[likely]]
 		{
-			mCurrent -= aligned_size;
+			mCurrentOffset -= aligned_size;
 
 			// If there are frees pending because they were made out of order, check if they can be freed now.
 			if (mNumPendingFrees > 0) [[unlikely]]
@@ -97,24 +97,25 @@ struct MemArena
 		else
 		{
 			// Otherwise add it to the list of pending frees.
-			AddPendingFree({ end_ptr, aligned_size });
+			AddPendingFree({ end_offset, aligned_size });
 		}
 	}
 
 	// Try resizing ioMemory. Return true on success. Can fail if ioMemory isn't the last block or not enough free memory for inNewSize.
-	bool TryRealloc(MemBlock& ioMemory, int64 inNewSize)
+	bool TryRealloc(MemBlock& ioMemory, int inNewSize)
 	{
 		gAssert(Owns(ioMemory.mPtr));
 
 		if (!IsLastAlloc(ioMemory)) [[unlikely]]
 			return false;
 
-		int64 aligned_new_size = gAlignUp(inNewSize, cAlignment);
+		int aligned_new_size   = (int)gAlignUp(inNewSize, cAlignment);
+		int new_current_offset = (int)(ioMemory.mPtr + aligned_new_size - mBeginPtr);
 
-		if ((ioMemory.mPtr + aligned_new_size) > mEnd) [[unlikely]]
+		if (new_current_offset > mEndOffset) [[unlikely]]
 			return false; // Wouldn't fit.
 
-		mCurrent = ioMemory.mPtr + aligned_new_size;
+		mCurrentOffset = new_current_offset;
 		ioMemory.mSize = inNewSize;
 
 		return true;
@@ -123,33 +124,33 @@ struct MemArena
 	// Return true if inMemoryPtr is inside this arena.
 	bool Owns(const void* inMemoryPtr) const
 	{
-		return ((const uint8*)inMemoryPtr >= mBegin && (const uint8*)inMemoryPtr < mEnd);
+		return ((const uint8*)inMemoryPtr >= mBeginPtr && (const uint8*)inMemoryPtr < (mBeginPtr + mEndOffset));
 	}
 
 	// Return true if inMemory is the last allocation made in this arena.
 	bool IsLastAlloc(MemBlock inMemory) const
 	{
-		return (inMemory.mPtr + gAlignUp(inMemory.mSize, cAlignment)) == mCurrent;
+		return (inMemory.mPtr + gAlignUp(inMemory.mSize, cAlignment)) == (mBeginPtr + mCurrentOffset);
 	}
 
 	// Return the amount of memory currently allocated.
-	int64 GetAllocatedSize() const
+	int GetAllocatedSize() const
 	{
-		return mCurrent - mBegin;
+		return mCurrentOffset;
 	}
 
 	int GetNumPendingFree() const { return mNumPendingFrees; }
 
 protected:
-	uint8* mBegin   = nullptr;
-	uint8* mEnd     = nullptr;
-	uint8* mCurrent = nullptr;
+	uint8* mBeginPtr      = nullptr;
+	int    mEndOffset     = 0;
+	int    mCurrentOffset = 0;
 	
 	struct FreeBlock
 	{
-		uint8* mEnd  = nullptr;
-		int64  mSize = 0;
-		uint8* Begin() const { return mEnd - mSize; }
+		int mEndOffset = 0;
+		int mSize      = 0;
+		int BeginOffset() const { return mEndOffset - mSize; }
 	};
 
 	void AddPendingFree(FreeBlock inFreeBlock);
@@ -194,11 +195,11 @@ struct VMemArena : MemArena
 		if (inCommitIncreaseSize <= 0)
 			inCommitIncreaseSize = cDefaultCommitSize;
 
-		mCommitIncreaseSize = gAlignUp(inCommitIncreaseSize, gVMemCommitGranularity());
+		mCommitIncreaseSize = (int)gAlignUp(inCommitIncreaseSize, gVMemCommitGranularity());
 
 		// Reserve the memory.
 		MemBlock reserved_mem = gVMemReserve(inReservedSize);
-		mEndReserved = reserved_mem.mPtr + reserved_mem.mSize;
+		mEndReservedOffset    = (int)reserved_mem.mSize;
 
 		// Initialize the parent MemArena with a zero-sized block (no memory is committed yet).
 		MemArena::operator=(MemBlock{ reserved_mem.mPtr, 0 });
@@ -211,45 +212,45 @@ struct VMemArena : MemArena
 
 		MemArena::operator=((MemArena&&)ioOther);
 
-		mEndReserved = ioOther.mEndReserved;
-		ioOther.mEndReserved = nullptr;
+		mEndReservedOffset = ioOther.mEndReservedOffset;
+		ioOther.mEndReservedOffset = 0;
 
 		return *this;
 	}
 
-	MemBlock Alloc(int64 inSize)
+	MemBlock Alloc(int inSize)
 	{
-		gAssert(mBegin != nullptr); // Need to initialize with a MemBlock first.
+		gAssert(mBeginPtr != nullptr); // Need to initialize with a MemBlock first.
 
-		int64  aligned_size = gAlignUp(inSize, cAlignment);
-		uint8* new_current  = mCurrent + aligned_size;
+		int aligned_size       = (int)gAlignUp(inSize, cAlignment);
+		int new_current_offset = mCurrentOffset + aligned_size;
 
 		// Check if we need to commit more memory.
-		if (new_current > mEnd) [[unlikely]]
-			CommitMore(new_current);
+		if (new_current_offset > mEndOffset) [[unlikely]]
+			CommitMore(new_current_offset);
 
 		return MemArena::Alloc(inSize);
 	}
 
-	bool TryRealloc(MemBlock& ioMemory, int64 inNewSize)
+	bool TryRealloc(MemBlock& ioMemory, int inNewSize)
 	{
 		if (!IsLastAlloc(ioMemory)) [[unlikely]]
 			return false;
 
-		int64  aligned_new_size = gAlignUp(inNewSize, cAlignment);
-		uint8* new_current      = ioMemory.mPtr + aligned_new_size;
+		int aligned_new_size   = (int)gAlignUp(inNewSize, cAlignment);
+		int new_current_offset = (int)(ioMemory.mPtr + aligned_new_size - mBeginPtr);
 
 		// Check if we need to commit more memory.
-		if (new_current > mEnd) [[unlikely]]
-			CommitMore(new_current);
+		if (new_current_offset > mEndOffset) [[unlikely]]
+			CommitMore(new_current_offset);
 
 		return MemArena::TryRealloc(ioMemory, inNewSize);
 	}
 
 private:
-	void CommitMore(uint8* inNewEnd);
+	void CommitMore(int inNewEndOffset);
 	void FreeReserved();
 
-	uint8* mEndReserved        = nullptr;
-	int64  mCommitIncreaseSize = 64_KiB;
+	int mEndReservedOffset  = 0;
+	int mCommitIncreaseSize = 64_KiB;
 };
