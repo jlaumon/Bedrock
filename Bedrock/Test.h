@@ -2,7 +2,8 @@
 #pragma once
 
 #include <Bedrock/Core.h>
-#include <Bedrock/Memory.h>
+#include <Bedrock/TempMemory.h>
+#include <Bedrock/Move.h>
 
 // Tests are only enabled in debug. They are compiled but not registered in release (and should be optimized out).
 #ifdef ASSERTS_ENABLED
@@ -28,7 +29,7 @@ enum class TestResult
 // Register a test. Called automatically by REGISTER_TEST.
 void gRegisterTest(const char* inName, TestFunction inFunction); 
 
-// Run all registered tests. Return true on success.
+// Run all registered tests.
 TestResult gRunTests();
 
 // Return true if the current thread is running a test.
@@ -37,6 +38,9 @@ bool gIsRunningTest();
 // Fail current test. Called automatically by the TEST macros.
 void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine);
 
+// During tests, memory allocation functions can register their allocations/frees, for leak tracking.
+void gRegisterAlloc(MemBlock inMemory);
+void gRegisterFree(MemBlock inMemory);
 
 namespace Details
 {
@@ -106,7 +110,7 @@ namespace Details
 		TestScopedTempMemory()
 		{
 			// Save current temp memory setup.
-			mSavedTempMemArena   = gTempMemArena;
+			mSavedTempMemArena   = gMove(gTempMemArena);
 
 			// (Re-)initialize the temp memory with the internal buffer.
 			gTempMemArena = {};
@@ -121,12 +125,12 @@ namespace Details
 			gAssert(memory.mSize == sizeof(mBuffer));
 
 			// Restore the saved temp memory setup.
-			gTempMemArena   = mSavedTempMemArena;
+			gTempMemArena   = gMove(mSavedTempMemArena);
 		}
 
-		TempMemArena mSavedTempMemArena;
+		MemArena mSavedTempMemArena;
 
-		alignas(TempMemArena::cAlignment) uint8 mBuffer[taSize];
+		alignas(MemArena::cAlignment) uint8 mBuffer[taSize];
 	};
 }
 

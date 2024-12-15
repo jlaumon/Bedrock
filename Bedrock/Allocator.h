@@ -2,25 +2,27 @@
 #pragma once
 
 #include <Bedrock/Memory.h>
+#include <Bedrock/TempMemory.h>
 
 
-// Default allocator.
+// Default allocator. Allocates from the heap.
 template <typename taType>
-struct Allocator
+struct DefaultAllocator
 {
 	// Allocate memory.
 	static taType*	Allocate(int64 inSize)					{ return (taType*)gMemAlloc(inSize * sizeof(taType)).mPtr; }
-	static void		Free(taType* inPtr, int64 inSize)		{ return gMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	static void		Free(taType* inPtr, int64 inSize)		{ gMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)	{ return false; }
+	static bool		TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)	{ gAssert(inPtr != nullptr); return false; }
 };
 
 
 
-// Temp memory allocator. Fallsback to the default allocator if temp memory runs out.
+// Temp memory allocator. Allocates from a thread-local global MemArena.
+// Falls back to the default allocator if temp memory runs out.
 template <typename taType>
-struct TempAllocator : Allocator<taType>
+struct TempAllocator
 {
 	// Allocate memory.
 	static taType*	Allocate(int64 inSize);
@@ -31,38 +33,115 @@ struct TempAllocator : Allocator<taType>
 };
 
 
+
+// Allocates from an externally provided MemArena.
+template <typename taType>
+struct ArenaAllocator
+{
+	ArenaAllocator() = default;
+	ArenaAllocator(MemArena& inArena) : mArena(&inArena) {}
+
+	// Allocate memory.
+	taType*			Allocate(int64 inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
+	void			Free(taType* inPtr, int64 inSize)	{ mArena->Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+
+	// Try changing the size of an existing allocation, return false if unsuccessful.
+	bool			TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+
+	MemArena*		GetArena()							{ return mArena; }
+	const MemArena* GetArena() const					{ return mArena; }
+
+private:
+	MemArena*		mArena = nullptr;
+};
+
+
+
+// Allocates from an internal VMemArena which uses virtual memory.
+// The VMemArena can grow as necessary by committing more virtual memory.
+template <typename taType>
+struct VMemAllocator
+{
+	static constexpr int64 cDefaultReservedSize = VMemArena::cDefaultReservedSize; // By default the arena will reserve that much virtual memory.
+	static constexpr int64 cDefaultCommitSize   = VMemArena::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
+
+	VMemAllocator() = default;
+	VMemAllocator(int64 inReserveSizeInBytes, int64 inCommitIncreaseSizeInBytes = cDefaultCommitSize)
+		: mArena(inReserveSizeInBytes, inCommitIncreaseSizeInBytes) {}
+
+	// Allocate memory.
+	taType*			Allocate(int64 inSize);
+	void			Free(taType* inPtr, int64 inSize)	{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+
+	// Try changing the size of an existing allocation, return false if unsuccessful.
+	bool			TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize);
+
+private:
+	VMemArena		mArena;
+};
+
+
 template <typename taType>
 taType* TempAllocator<taType>::Allocate(int64 inSize)
 {
-	MemBlock mem = gTempMemAlloc(inSize * sizeof(taType));
+	MemBlock mem = gTempMemArena.Alloc(inSize * sizeof(taType));
 
-	if (mem != nullptr)
+	if (mem != nullptr) [[likely]]
 		return (taType*)mem.mPtr;
 
-	return Allocator<taType>::Allocate(inSize);
+	return DefaultAllocator<taType>::Allocate(inSize);
 }
 
 
 template <typename taType>
 void TempAllocator<taType>::Free(taType* inPtr, int64 inSize)
 {
-	if (gIsTempMem(inPtr))
-		gTempMemFree({ (uint8*)inPtr, inSize * (int64)sizeof(taType) });
+	if (gTempMemArena.Owns(inPtr)) [[likely]]
+		gTempMemArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) });
 	else
-		Allocator<taType>::Free(inPtr, inSize);
+		DefaultAllocator<taType>::Free(inPtr, inSize);
 }
 
 
 template <typename taType>
 bool TempAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
 {
-	if (gIsTempMem(inPtr))
+	gAssert(inPtr != nullptr); // Call Allocate instead.
+
+	if (gTempMemArena.Owns(inPtr)) [[likely]]
 	{
 		MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
-		return gTempMemTryRealloc(mem, inNewSize * (int64)sizeof(taType));
+		return gTempMemArena.TryRealloc(mem, inNewSize * (int64)sizeof(taType));
 	}
 	
-	return Allocator<taType>::TryRealloc(inPtr, inCurrentSize, inNewSize);
+	return DefaultAllocator<taType>::TryRealloc(inPtr, inCurrentSize, inNewSize);
 }
 
 
+template <typename taType> bool
+ArenaAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+{
+	gAssert(inPtr != nullptr); // Call Allocate instead.
+
+	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
+	return mArena->TryRealloc(mem, inNewSize * (int64)sizeof(taType));
+}
+
+
+template <typename taType> taType* VMemAllocator<taType>::Allocate(int64 inSize)
+{
+	// If the arena wasn't initialized yet, do it now (with default values).
+	// It's better to do it lazily than reserving virtual memory in every container default constructor.
+	if (mArena.GetMemBlock() == nullptr) [[unlikely]]
+		mArena = VMemArena(cDefaultReservedSize, cDefaultCommitSize);
+
+	return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr;
+}
+
+template <typename taType> bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int64 inCurrentSize, int64 inNewSize)
+{
+	gAssert(inPtr != nullptr); // Call Allocate instead.
+
+	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
+	return mArena.TryRealloc(mem, inNewSize * (int64)sizeof(taType));
+}

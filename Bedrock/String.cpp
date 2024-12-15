@@ -42,6 +42,10 @@ REGISTER_TEST("String")
 	TEST_TRUE(moved_test.Begin() == test_begin);
 	TEST_TRUE(test.Begin() == StringView().Begin());
 
+	test         = "test";
+	String test2 = "other test";
+	test2 = gMove(test); // test2 should free its previous alloc. Leak detection will tell.
+	TEST_TRUE(test.Empty());
 
 	struct TestStringView : StringView
 	{
@@ -91,7 +95,7 @@ REGISTER_TEST("TempString")
 
 	TempString test = "test";
 
-	TEST_TRUE(gIsTempMem(test.Begin()));
+	TEST_TRUE(gTempMemArena.Owns(test.Begin()));
 	TEST_TRUE(test.Size() == 4);
 	TEST_TRUE(test.Capacity() >= 5);
 	TEST_TRUE(test == "test");

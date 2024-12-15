@@ -6,6 +6,7 @@
 #include <Bedrock/Trace.h>
 #include <Bedrock/Ticks.h>
 
+
 struct Test
 {
 	const char*  mName;
@@ -31,6 +32,10 @@ void gRegisterTest(const char* inName, TestFunction inFunction)
 static thread_local StringView sCurrentTestName;
 static thread_local bool       sCurrentTestSuccess;
 
+// Extremely basic leak tracking.
+static thread_local int        sCurrentTestAllocCount;
+static thread_local int64      sCurrentTestAllocTotalSize;
+
 bool gIsRunningTest()
 {
 	return !sCurrentTestName.Empty();
@@ -44,12 +49,26 @@ TestResult gRunTests()
 
 	for (const Test& test : sGetAllTests())
 	{
-		sCurrentTestName    = test.mName;
-		sCurrentTestSuccess = true;
+		sCurrentTestName       = test.mName;
+		sCurrentTestSuccess    = true;
+
+		sCurrentTestAllocCount     = 0;
+		sCurrentTestAllocTotalSize = 0;
+
 		gTrace(R"(Test "%s" starting.)", test.mName);
 		Timer timer;
 
 		test.mFunction();
+
+		if (sCurrentTestAllocCount != 0 || sCurrentTestAllocTotalSize != 0)
+		{
+			gTrace("Memory leaks detected: %d allocations (%lld bytes)", sCurrentTestAllocCount, sCurrentTestAllocTotalSize);
+			sCurrentTestSuccess = false;
+
+			// If a debugger is attached, break to make sure it's noticed.
+			if (gIsDebuggerAttached())
+				breakpoint;
+		}
 
 		gTrace(R"(Test "%s" finished: %s (%.2f ms))", 
 			test.mName, 
@@ -76,3 +95,14 @@ void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int 
 }
 
 
+void gRegisterAlloc(MemBlock inMemory)
+{
+	sCurrentTestAllocCount++;
+	sCurrentTestAllocTotalSize += inMemory.mSize;
+}
+
+void gRegisterFree(MemBlock inMemory)
+{
+	sCurrentTestAllocCount--;
+	sCurrentTestAllocTotalSize -= inMemory.mSize;
+}

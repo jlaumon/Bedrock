@@ -2,24 +2,44 @@
 #pragma once
 
 #include <Bedrock/Core.h>
-
-struct MemBlock
-{
-	uint8* mPtr  = nullptr;
-	int64  mSize = 0;
-
-	constexpr bool operator==(NullPtrType) const { return mPtr == nullptr; }
-};
+#include <Bedrock/Memory.h>
 
 
 // Simple linear allocator.
-// Allocations should be freed in order, but also supports freeing a small number of allocations out of orders (see taMaxOutOfOrderFrees).
-template <int taAlignment = 16, int taMaxOutOfOrderFrees = 16>
+// Allocations must be freed in order in general, but a small number of out of order frees is supported (see cMaxPendingFrees).
+// Deals only in bytes. For typed allocators to use with containers, see Allocator.h
 struct MemArena
 {
-	static constexpr int cAlignment = taAlignment;
+	static constexpr int cAlignment       = 16;
+	static constexpr int cMaxPendingFrees = 16;
 
-	MemArena() = default;
+	// Default
+	MemArena()  = default;
+	~MemArena() { gAssert(GetAllocatedSize() == 0); }
+
+	// Not copyable
+	MemArena(const MemArena&)            = delete;
+	MemArena& operator=(const MemArena&) = delete;
+
+	// Move
+	MemArena(MemArena&& ioOther) { operator=((MemArena&&)ioOther); }
+	MemArena& operator=(MemArena&& ioOther)
+	{
+		gAssert(GetAllocatedSize() == 0);
+
+		mBegin           = ioOther.mBegin;
+		mEnd             = ioOther.mEnd;
+		mCurrent         = ioOther.mCurrent;
+		mNumPendingFrees = ioOther.mNumPendingFrees;
+		gMemCopy(mPendingFrees, ioOther.mPendingFrees, mNumPendingFrees * sizeof(FreeBlock));
+
+		ioOther.mBegin           = nullptr;
+		ioOther.mEnd             = nullptr;
+		ioOther.mCurrent         = nullptr;
+		ioOther.mNumPendingFrees = 0;
+
+		return *this;
+	}
 
 	// Initialize this arena with a memory block.
 	MemArena(MemBlock inMemory)
@@ -39,20 +59,10 @@ struct MemArena
 		return { mBegin, mEnd - mBegin };
 	}
 
-	// Free all the allocations.
-	void Reset()
-	{
-		mCurrent = mBegin;
-
-		for (int i = 0; i < mNumOutOfOrderFrees; ++i)
-			mOutOfOrderFrees[i] = {};
-		mNumOutOfOrderFrees = 0;
-	}
-
 	// Allocate memory.
 	MemBlock Alloc(int64 inSize)
 	{
-		gAssert(mBegin != nullptr); // Call Init first.
+		gAssert(mBegin != nullptr); // Need to initialize with a MemBlock first.
 
 		int64  aligned_size = gAlignUp(inSize, cAlignment);
 		uint8* current      = mCurrent;
@@ -68,9 +78,7 @@ struct MemArena
 	// Free memory. inMemory should be the last allocation, or the arena should support enough out-of-order frees.
 	void Free(MemBlock inMemory)
 	{
-		if (inMemory.mPtr == nullptr)
-			return;
-
+		gAssert(inMemory.mPtr != nullptr);
 		gAssert(inMemory.mSize > 0);
 		gAssert(Owns(inMemory.mPtr));
 
@@ -82,32 +90,14 @@ struct MemArena
 		{
 			mCurrent -= aligned_size;
 
-			// If there are out of order frees pending, check if they can be freed now.
-			for (int i = 0; i < mNumOutOfOrderFrees;)
-			{
-				if (mOutOfOrderFrees[i].mEnd == mCurrent)
-				{
-					// Free it.
-					mCurrent -= mOutOfOrderFrees[i].mSize;
-
-					// Remove it from the out-of-order free list.
-					// Note: A ring buffer might be more efficient since these free blocks are likely in-order,
-					// but out-of-order frees should be rare enough that it should not matter.
-					gMemMove(&mOutOfOrderFrees[i], &mOutOfOrderFrees[i + 1], sizeof(FreeBlocks) * (mNumOutOfOrderFrees - 1 - i));
-					mNumOutOfOrderFrees--;
-				}
-				else
-				{
-					i++;
-				}
-			}
+			// If there are frees pending because they were made out of order, check if they can be freed now.
+			if (mNumPendingFrees > 0) [[unlikely]]
+				TryRemovePendingFrees();
 		}
 		else
 		{
-			// Otherwise add it to the list of out-of-order frees.
-			gAssert(mNumOutOfOrderFrees < taMaxOutOfOrderFrees);
-			mOutOfOrderFrees[mNumOutOfOrderFrees] = { end_ptr, aligned_size };
-			mNumOutOfOrderFrees++;
+			// Otherwise add it to the list of pending frees.
+			AddPendingFree({ end_ptr, aligned_size });
 		}
 	}
 
@@ -116,12 +106,12 @@ struct MemArena
 	{
 		gAssert(Owns(ioMemory.mPtr));
 
-		if (!IsLastAlloc(ioMemory))
+		if (!IsLastAlloc(ioMemory)) [[unlikely]]
 			return false;
 
 		int64 aligned_new_size = gAlignUp(inNewSize, cAlignment);
 
-		if ((ioMemory.mPtr + aligned_new_size) > mEnd)
+		if ((ioMemory.mPtr + aligned_new_size) > mEnd) [[unlikely]]
 			return false; // Wouldn't fit.
 
 		mCurrent = ioMemory.mPtr + aligned_new_size;
@@ -148,17 +138,118 @@ struct MemArena
 		return mCurrent - mBegin;
 	}
 
-private:
+	int GetNumPendingFree() const { return mNumPendingFrees; }
+
+protected:
 	uint8* mBegin   = nullptr;
 	uint8* mEnd     = nullptr;
 	uint8* mCurrent = nullptr;
-
-	struct FreeBlocks
+	
+	struct FreeBlock
 	{
 		uint8* mEnd  = nullptr;
 		int64  mSize = 0;
+		uint8* Begin() const { return mEnd - mSize; }
 	};
-	FreeBlocks mOutOfOrderFrees[taMaxOutOfOrderFrees];
-	int        mNumOutOfOrderFrees = 0;
+
+	void AddPendingFree(FreeBlock inFreeBlock);
+	void TryRemovePendingFrees();
+
+	int       mNumPendingFrees = 0;				// Sorted in descending order.
+	FreeBlock mPendingFrees[cMaxPendingFrees];
 };
 
+
+// Version of MemArena that embeds a fixed-size buffer and allocates from it.
+template <int taSize>
+struct FixedMemArena : MemArena
+{
+	FixedMemArena() : MemArena({ mBuffer, (int64)taSize }) {}
+	~FixedMemArena() { gAssert(GetAllocatedSize() == 0); }
+
+	// Not movable since data is embedded.
+	FixedMemArena(FixedMemArena&&)            = delete;
+	FixedMemArena& operator=(FixedMemArena&&) = delete;
+
+private:
+	alignas(cAlignment) uint8 mBuffer[taSize];
+};
+
+
+// Version of MemArena that allocates virtual memory as backing. Can grow.
+struct VMemArena : MemArena
+{
+	static constexpr int64 cDefaultReservedSize = 100_MiB; // By default the arena will reserve that much virtual memory.
+	static constexpr int64 cDefaultCommitSize   =  64_KiB; // By default the arena will commit that much virtual memory every time it grows.
+
+	VMemArena() = default;
+	~VMemArena();
+
+	// Initialize this arena with reserved memory (but no committed memory yet). 
+	VMemArena(int64 inReservedSize, int64 inCommitIncreaseSize)
+	{
+		// Replace parameters by defaults if necessary.
+		if (inReservedSize <= 0)
+			inReservedSize = cDefaultReservedSize;
+		if (inCommitIncreaseSize <= 0)
+			inCommitIncreaseSize = cDefaultCommitSize;
+
+		mCommitIncreaseSize = gAlignUp(inCommitIncreaseSize, gVMemCommitGranularity());
+
+		// Reserve the memory.
+		MemBlock reserved_mem = gVMemReserve(inReservedSize);
+		mEndReserved = reserved_mem.mPtr + reserved_mem.mSize;
+
+		// Initialize the parent MemArena with a zero-sized block (no memory is committed yet).
+		MemArena::operator=(MemBlock{ reserved_mem.mPtr, 0 });
+	}
+
+	VMemArena(VMemArena&& ioOther) { operator=((VMemArena&&)ioOther); }
+	VMemArena& operator=(VMemArena&& ioOther)
+	{
+		FreeReserved();
+
+		MemArena::operator=((MemArena&&)ioOther);
+
+		mEndReserved = ioOther.mEndReserved;
+		ioOther.mEndReserved = nullptr;
+
+		return *this;
+	}
+
+	MemBlock Alloc(int64 inSize)
+	{
+		gAssert(mBegin != nullptr); // Need to initialize with a MemBlock first.
+
+		int64  aligned_size = gAlignUp(inSize, cAlignment);
+		uint8* new_current  = mCurrent + aligned_size;
+
+		// Check if we need to commit more memory.
+		if (new_current > mEnd) [[unlikely]]
+			CommitMore(new_current);
+
+		return MemArena::Alloc(inSize);
+	}
+
+	bool TryRealloc(MemBlock& ioMemory, int64 inNewSize)
+	{
+		if (!IsLastAlloc(ioMemory)) [[unlikely]]
+			return false;
+
+		int64  aligned_new_size = gAlignUp(inNewSize, cAlignment);
+		uint8* new_current      = ioMemory.mPtr + aligned_new_size;
+
+		// Check if we need to commit more memory.
+		if (new_current > mEnd) [[unlikely]]
+			CommitMore(new_current);
+
+		return MemArena::TryRealloc(ioMemory, inNewSize);
+	}
+
+private:
+	void CommitMore(uint8* inNewEnd);
+	void FreeReserved();
+
+	uint8* mEndReserved        = nullptr;
+	int64  mCommitIncreaseSize = 64_KiB;
+};

@@ -16,16 +16,20 @@ enum class EResizeInit
 };
 
 
-template <typename taType, typename taAllocator = Allocator<taType>>
-struct Vector : private taAllocator
+template <typename taType, template <typename> typename taAllocator = DefaultAllocator>
+struct Vector : private taAllocator<taType>
 {
 	static_assert(!cIsConst<taType>);
 
 	using ValueType = taType;
+	using Allocator = taAllocator<taType>;
 
 	// Default
 	constexpr Vector() = default;
 	~Vector();
+
+	// Default with Allocator
+	constexpr explicit Vector(Allocator&& inAllocator) : Allocator(gMove(inAllocator)) {}
 
 	// Move
 	Vector(Vector&& ioOther);
@@ -36,12 +40,12 @@ struct Vector : private taAllocator
 	Vector& operator=(const Vector& inOther);
 
 	// Copy from Vector with different allocator
-	template <class taOtherAllocator>
-	requires (!cIsSame<taAllocator, taOtherAllocator>)
+	template <template <typename> typename taOtherAllocator>
+	requires (!cIsSame<taAllocator<taType>, taOtherAllocator<taType>>)
 	Vector(const Vector<taType, taOtherAllocator>& inOther);
-	template <class taOtherAllocator>
-	requires (!cIsSame<taAllocator, taOtherAllocator>)
-	Vector& operator=(const Vector<taOtherAllocator>& inOther);
+	template <template <typename> typename taOtherAllocator>
+	requires (!cIsSame<taAllocator<taType>, taOtherAllocator<taType>>)
+	Vector& operator=(const Vector<taType, taOtherAllocator>& inOther);
 
 	// Copy from InitializerList
 	Vector(InitializerList<taType> inInitializerList);
@@ -58,6 +62,8 @@ struct Vector : private taAllocator
 	int Size() const { return mSize; }
 	int Capacity() const { return mCapacity; }
 	bool Empty() const { return mSize == 0; }
+
+	Allocator& GetAllocator() { return *this; }
 
 	constexpr taType* Begin() { return mData; }
 	constexpr taType* End()   { return mData + mSize; }
@@ -114,36 +120,48 @@ private:
 
 
 // Vector is a contiguous container.
-template<class taType, class taAllocator> inline constexpr bool cIsContiguous<Vector<taType, taAllocator>> = true;
+template<class taType, template <typename> typename taAllocator> inline constexpr bool cIsContiguous<Vector<taType, taAllocator>> = true;
 
 
 // Alias for a Vector using the TempAllocator.
 template <typename taType>
-using TempVector = Vector<taType, TempAllocator<taType>>;
+using TempVector = Vector<taType, TempAllocator>;
+
+// Alias for a Vector using the ArenaAllocator.
+// A MemArena needs to be passed to the Vector before it can be used.
+template <typename taType>
+using ArenaVector = Vector<taType, ArenaAllocator>;
+
+// Alias for a Vector using the VMemAllocator.
+// It allocates virtual memory to grow while keepting the same data address.
+// This is meant for very large Vectors. Virtual memory operations are more expensive than small heap allocations.
+template <typename taType>
+using VMemVector = Vector<taType, VMemAllocator>;
+
 
 
 // Deduction guides for Span.
-template<typename taType, typename taAllocator>
+template<typename taType, template <typename> typename taAllocator>
 Span(Vector<taType, taAllocator>&) -> Span<taType>;
-template<typename taType, typename taAllocator>
+template<typename taType, template <typename> typename taAllocator>
 Span(const Vector<taType, taAllocator>&) -> Span<const taType>;
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>::~Vector()
 {
 	ClearAndFreeMemory();
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>::Vector(Vector&& ioOther)
 {
 	MoveFrom(gMove(ioOther));
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Vector&& ioOther)
 {
 	MoveFrom(gMove(ioOther));
@@ -151,14 +169,14 @@ Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Vector&& ioO
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>::Vector(const Vector& inOther)
 {
 	CopyFrom(Span(inOther));
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(const Vector& inOther)
 {
 	CopyFrom(Span(inOther));
@@ -166,31 +184,33 @@ Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(const Vector
 }
 
 
-template <typename taType, typename taAllocator>
-template <class taOtherAllocator> requires (!cIsSame<taAllocator, taOtherAllocator>)
+template <typename taType, template <typename> typename taAllocator>
+template <template <typename> typename taOtherAllocator>
+requires (!cIsSame<taAllocator<taType>, taOtherAllocator<taType>>)
 Vector<taType, taAllocator>::Vector(const Vector<taType, taOtherAllocator>& inOther)
 {
 	CopyFrom(Span(inOther));
 }
 
 
-template <typename taType, typename taAllocator>
-template <class taOtherAllocator> requires (!cIsSame<taAllocator, taOtherAllocator>)
-Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(const Vector<taOtherAllocator>& inOther)
+template <typename taType, template <typename> typename taAllocator>
+template <template <typename> typename taOtherAllocator>
+requires (!cIsSame<taAllocator<taType>, taOtherAllocator<taType>>)
+Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(const Vector<taType, taOtherAllocator>& inOther)
 {
 	CopyFrom(Span(inOther));
 	return *this;
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>::Vector(InitializerList<taType> inInitializerList)
 {
 	CopyFrom(Span(inInitializerList.begin(), (int)inInitializerList.size()));
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(InitializerList<taType> inInitializerList)
 {
 	CopyFrom(Span(inInitializerList.begin(), (int)inInitializerList.size()));
@@ -198,7 +218,7 @@ Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(InitializerL
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 template <class taOtherType> requires cIsConvertible<taOtherType, taType>
 Vector<taType, taAllocator>::Vector(Span<taOtherType> inSpan)
 {
@@ -206,7 +226,7 @@ Vector<taType, taAllocator>::Vector(Span<taOtherType> inSpan)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 template <class taOtherType> requires cIsConvertible<taOtherType, taType>
 Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Span<taOtherType> inSpan)
 {
@@ -215,7 +235,7 @@ Vector<taType, taAllocator>& Vector<taType, taAllocator>::operator=(Span<taOther
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 constexpr int Vector<taType, taAllocator>::GetIndex(const taType& inElement) const
 {
 	int index = (int)(&inElement - mData);
@@ -224,7 +244,7 @@ constexpr int Vector<taType, taAllocator>::GetIndex(const taType& inElement) con
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Clear()
 {
 	for (taType& element : *this)
@@ -233,20 +253,20 @@ void Vector<taType, taAllocator>::Clear()
 	mSize = 0;
 }
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::ClearAndFreeMemory()
 {
 	Clear();
 
 	if (mData != nullptr)
 	{
-		taAllocator::Free(mData, mCapacity);
+		Allocator::Free(mData, mCapacity);
 		mData = nullptr;
 	}
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Reserve(int inCapacity)
 {
 	if (mCapacity >= inCapacity)
@@ -256,12 +276,12 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 	mCapacity = inCapacity;
 
 	// Try to grow the allocation.
-	if (taAllocator::TryRealloc(mData, old_capacity, mCapacity))
+	if (mData != nullptr && Allocator::TryRealloc(mData, old_capacity, mCapacity))
 		return; // Success, nothing else to do.
 
 	// Allocate new data.
 	taType* old_data = mData;
-	mData = taAllocator::Allocate(mCapacity);
+	mData = Allocator::Allocate(mCapacity);
 
 	if constexpr (cIsMoveConstructible<taType>)
 	{
@@ -276,13 +296,18 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 			gPlacementNew(mData[i], old_data[i]);
 	}
 
-	// Free old data.
+	// Destroy and free old data.
 	if (old_data != nullptr)
-		taAllocator::Free(old_data, old_capacity);
+	{
+		for (int i = 0, n = mSize; i < n; ++i)
+			old_data[i].~taType();
+		
+		Allocator::Free(old_data, old_capacity);
+	}
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 {
 	if (inNewSize < mSize)
@@ -319,17 +344,17 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 }
 
 
-template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::ShrinkToFit()
+template <typename taType, template <typename> typename taAllocator> void Vector<taType, taAllocator>::ShrinkToFit()
 {
 	if (mCapacity == mSize)
 		return;
 
-	if (taAllocator::TryRealloc(mData, mCapacity, mSize))
+	if (Allocator::TryRealloc(mData, mCapacity, mSize))
 		mCapacity = mSize;
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Insert(int inPosition, const taType& inValue)
 {
 	gBoundsCheck(inPosition, mSize + 1);
@@ -357,7 +382,7 @@ void Vector<taType, taAllocator>::Insert(int inPosition, const taType& inValue)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Insert(int inPosition, taType&& inValue)
 {
 	gBoundsCheck(inPosition, mSize + 1);
@@ -385,7 +410,7 @@ void Vector<taType, taAllocator>::Insert(int inPosition, taType&& inValue)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Insert(int inPosition, Span<const taType> inValues)
 {
 	if (inValues.Empty())
@@ -417,7 +442,7 @@ void Vector<taType, taAllocator>::Insert(int inPosition, Span<const taType> inVa
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 template <typename ... taArgs>
 void Vector<taType, taAllocator>::Emplace(int inPosition, taArgs&&... inArgs)
 {
@@ -441,13 +466,13 @@ void Vector<taType, taAllocator>::Emplace(int inPosition, taArgs&&... inArgs)
 }
 
 
-template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition)
+template <typename taType, template <typename> typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition)
 {
 	Erase(inPosition, 1);
 }
 
 
-template <typename taType, typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition, int inCount)
+template <typename taType, template <typename> typename taAllocator> void Vector<taType, taAllocator>::Erase(int inPosition, int inCount)
 {
 	gBoundsCheck(inPosition, mSize);
 	gBoundsCheck(inPosition + inCount - 1, mSize);
@@ -458,14 +483,14 @@ template <typename taType, typename taAllocator> void Vector<taType, taAllocator
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::SwapErase(int inPosition)
 {
 	gSwapErase(*this, Begin() + inPosition);
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::PushBack(const taType& inValue)
 {
 	// Copying from self is not allowed.
@@ -478,7 +503,7 @@ void Vector<taType, taAllocator>::PushBack(const taType& inValue)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::PushBack(taType&& inValue)
 {
 	// Copying from self is not allowed.
@@ -488,7 +513,7 @@ void Vector<taType, taAllocator>::PushBack(taType&& inValue)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 template <typename ... taArgs>
 taType& Vector<taType, taAllocator>::EmplaceBack(taArgs&&... inArgs)
 {
@@ -503,7 +528,7 @@ taType& Vector<taType, taAllocator>::EmplaceBack(taArgs&&... inArgs)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::PopBack()
 {
 	gAssert(Size() >= 1);
@@ -512,12 +537,20 @@ void Vector<taType, taAllocator>::PopBack()
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::MoveFrom(Vector&& ioOther)
 {
 	// Moving from self is not allowed.
 	gAssert(mData != ioOther.mData);
 
+	// Clear the current data.
+	ClearAndFreeMemory();
+
+	// Move the allocator.
+	GetAllocator() = gMove(ioOther.GetAllocator());
+	ioOther.GetAllocator() = Allocator();
+
+	// Move the data.
 	mData     = ioOther.mData;
 	mSize     = ioOther.mSize;
 	mCapacity = ioOther.mCapacity;
@@ -528,11 +561,14 @@ void Vector<taType, taAllocator>::MoveFrom(Vector&& ioOther)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::CopyFrom(Span<const taType> inOther)
 {
 	// Copying from self is not allowed.
 	gAssert(mData > inOther.End() || (mData + mCapacity) < inOther.Begin() || inOther.Empty());
+
+	// Note: Currently the allocator of inOther is never copied (on purpose).
+	// Maybe an allocator trait to decide whether to copy or not would be useful, but wasn't needed so far.
 
 	Clear();
 	Reserve(inOther.Size());
@@ -547,17 +583,17 @@ void Vector<taType, taAllocator>::CopyFrom(Span<const taType> inOther)
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::Grow(int inCapacity)
 {
-	if (mCapacity >= inCapacity)
+	if (mCapacity >= inCapacity) [[likely]]
 		return;
 
 	Reserve(gMax(mCapacity + mCapacity / 2, inCapacity));
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::MoveElementsForward(int inFromPosition, int inToPosition)
 {
 	gAssert(inFromPosition < inToPosition);
@@ -591,7 +627,7 @@ void Vector<taType, taAllocator>::MoveElementsForward(int inFromPosition, int in
 }
 
 
-template <typename taType, typename taAllocator>
+template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::MoveElementsBackward(int inFromPosition, int inToPosition)
 {
 	gAssert(inFromPosition > inToPosition);

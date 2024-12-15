@@ -20,7 +20,7 @@ REGISTER_TEST("Vector")
 	};
 
 	{
-		const Vector<int> test = { 1, 2, 3, 4, 5 };
+		Vector<int> test = { 1, 2, 3, 4, 5 };
 		TEST_TRUE(test.Size() == 5);
 		TEST_TRUE(test.Capacity() >= 5);
 
@@ -28,6 +28,9 @@ REGISTER_TEST("Vector")
 		TEST_TRUE(test_copy.Size() == 5);
 		TEST_TRUE(test_copy.Capacity() >= 5);
 		TEST_TRUE(Span(test_copy) == Span(test));
+
+		test_copy = gMove(test); // test_copy should free its previous alloc. Leak detection will tell.
+		TEST_TRUE(test.Empty());
 	}
 
 	{
@@ -200,7 +203,7 @@ REGISTER_TEST("TempVector")
 
 	TempVector<int> test = { 1, 2, 3, 4 };
 
-	TEST_TRUE(gIsTempMem(test.Begin()));
+	TEST_TRUE(gTempMemArena.Owns(test.Begin()));
 	TEST_TRUE(test.Size() == 4);
 	TEST_TRUE(test.Capacity() >= 4);
 
@@ -210,19 +213,117 @@ REGISTER_TEST("TempVector")
 	TEST_TRUE(test.Capacity() >= 30);
 	TEST_TRUE(test.Size() == 4);
 
-	Vector<int> non_temp = test;
-	TEST_TRUE(test.Begin() != non_temp.Begin());
-	TEST_TRUE(Span(test) == Span(non_temp));
+	Vector<int> heap_vec = test;
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == Span(heap_vec));
 
-	non_temp = { 7, 8, 9 };
-	test     = non_temp;
+	heap_vec = { 7, 8, 9 };
+	test     = heap_vec;
 	TEST_TRUE(test.Begin() == test_begin);
-	TEST_TRUE(test.Begin() != non_temp.Begin());
-	TEST_TRUE(Span(test) == Span(non_temp));
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == Span(heap_vec));
 
 	test.PushBack(1);
 	test.PopBack();
 	TEST_TRUE(test.Capacity() > test.Size());
 	test.ShrinkToFit();
 	TEST_TRUE(test.Capacity() == test.Size());
+};
+
+
+REGISTER_TEST("ArenaVector")
+{
+	FixedMemArena<1_KiB> mem_arena;
+
+	ArenaVector<int> test(mem_arena);
+	test = { 1, 2, 3, 4 };
+
+	TEST_TRUE(mem_arena.Owns(test.Begin()));
+	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(test.Capacity() >= 4);
+
+	int* test_begin = test.Begin();
+	test.Reserve(30);
+	TEST_TRUE(test.Begin() == test_begin); // Should have resized the memory block.
+	TEST_TRUE(test.Capacity() >= 30);
+	TEST_TRUE(test.Size() == 4);
+
+	Vector<int> heap_vec = test;
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == Span(heap_vec));
+
+	heap_vec = { 7, 8, 9 };
+	test     = heap_vec;
+	TEST_TRUE(test.Begin() == test_begin);
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == heap_vec);
+
+	test.PushBack(1);
+	test.PopBack();
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size());
+	
+	FixedMemArena<128_B> mem_arena2;
+	ArenaVector<int>     test2(mem_arena2);
+
+	// Copy to a different arena
+	test2 = test;
+	TEST_TRUE(test2 == Span(test));
+	TEST_TRUE(mem_arena2.Owns(test2.Begin()));
+	TEST_TRUE(test2.GetAllocator().GetArena() == &mem_arena2);
+
+	// Move also moves the arena
+	test2 = gMove(test);
+	TEST_TRUE(Span(test2) == heap_vec);
+	TEST_TRUE(test.Empty());
+	TEST_TRUE(mem_arena.Owns(test2.Begin()));
+	TEST_TRUE(test2.GetAllocator().GetArena() == &mem_arena);
+	TEST_TRUE(test.GetAllocator().GetArena() == nullptr);
+};
+
+
+
+REGISTER_TEST("VMemVector")
+{
+	VMemVector<int> test;
+	test = { 1, 2, 3, 4 };
+
+	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(test.Capacity() >= 4);
+
+	int* test_begin = test.Begin();
+	test.Reserve(30);
+	TEST_TRUE(test.Begin() == test_begin); // Should have resized the memory block.
+	TEST_TRUE(test.Capacity() >= 30);
+	TEST_TRUE(test.Size() == 4);
+
+	Vector<int> heap_vec = test;
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == Span(heap_vec));
+
+	heap_vec = { 7, 8, 9 };
+	test     = heap_vec;
+	TEST_TRUE(test.Begin() == test_begin);
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == heap_vec);
+
+	test.PushBack(1);
+	test.PopBack();
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size());
+
+	VMemVector<int> test2(VMemVector<int>::Allocator(8_KiB, 4_KiB));
+
+	test2 = test;
+	TEST_TRUE(test2 == Span(test));
+
+	// This should cause a new page to be committed.
+	test2.Resize(5_KiB / sizeof(test[0]), EResizeInit::NoZeroInit);
+	test2.PushBack(1); // Make sure writing to it doesn't crash.
+
+	test2 = gMove(test);
+	TEST_TRUE(Span(test2) == heap_vec);
+	TEST_TRUE(test.Empty());
 };

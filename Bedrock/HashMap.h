@@ -71,7 +71,7 @@ struct SetInsertResult
 // Heavily insipired from https://github.com/martinus/unordered_dense.
 // The key-values are stored contiguously (no holes), so iteration is very fast. Bucket metadata is stored separately.
 // Supports TempAllocator. Behaves as a set if taValue is void (see HashSet typedef) below.
-template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
+template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = DefaultAllocator>
 struct HashMap : taHash
 {
 	static constexpr bool cIsMap = !cIsVoid<taValue>;
@@ -541,13 +541,13 @@ private:
 		mBuckets[bucket_index] = {};
 	}
 
-	Vector<KeyValue, taAllocator<KeyValue>> mKeyValues; // Key-value pairs stored in a dense array.
-	Vector<Bucket, taAllocator<Bucket>>     mBuckets;	// Bucket metadata.
+	Vector<KeyValue, taAllocator> mKeyValues;	// Key-value pairs stored in a dense array.
+	Vector<Bucket, taAllocator>   mBuckets;		// Bucket metadata.
 };
 
 
 // Dense HashSet class.
-template <typename taKey, typename taHash = Hash<taKey>, template <typename> typename taAllocator = Allocator>
+template <typename taKey, typename taHash = Hash<taKey>, template <typename> typename taAllocator = DefaultAllocator>
 using HashSet = HashMap<taKey, void, taHash, taAllocator>;
 
 

@@ -6,9 +6,11 @@
 #include <Bedrock/InitializerList.h>
 
 
-template <class taAllocator>
-struct StringBase : StringView, private taAllocator
+template <template <typename> typename taAllocator>
+struct StringBase : StringView, private taAllocator<char>
 {
+	using Allocator = taAllocator<char>;
+
 	// Default
 	constexpr StringBase() = default;
 	~StringBase();
@@ -22,11 +24,11 @@ struct StringBase : StringView, private taAllocator
 	StringBase& operator=(const StringBase& inOther) { *this = static_cast<const StringView&>(inOther); return *this; }
 
 	// Copy from String with different allocator
-	template <class taOtherAllocator>
-	requires (!cIsSame<taAllocator, taOtherAllocator>)
+	template <template <typename> typename taOtherAllocator>
+	requires (!cIsSame<taAllocator<char>, taOtherAllocator<char>>)
 	StringBase(const StringBase<taOtherAllocator>& inOther) : StringBase(static_cast<const StringView&>(inOther)) {}
-	template <class taOtherAllocator>
-	requires (!cIsSame<taAllocator, taOtherAllocator>)
+	template <template <typename> typename taOtherAllocator>
+	requires (!cIsSame<taAllocator<char>, taOtherAllocator<char>>)
 	StringBase& operator=(const StringBase<taOtherAllocator>& inOther) { *this = static_cast<const StringView&>(inOther); return *this; }
 
 	// Copy from StringView
@@ -41,6 +43,8 @@ struct StringBase : StringView, private taAllocator
 	// Copy from InitializerList (not super useful but resolves ambiguity when using = {})
 	StringBase(InitializerList<char> inInitializerList);
 	StringBase& operator=(InitializerList<char> inInitializerList);
+
+	Allocator& GetAllocator() { return *this; }
 
 	constexpr void RemoveSuffix(int inCount);
 
@@ -81,7 +85,7 @@ private:
 };
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 constexpr void StringBase<taAllocator>::RemoveSuffix(int inCount)
 {
 	gAssert(mSize >= inCount);
@@ -90,35 +94,35 @@ constexpr void StringBase<taAllocator>::RemoveSuffix(int inCount)
 }
 
 
-static_assert(sizeof(StringBase<Allocator<char>>) == 16);
+static_assert(sizeof(StringBase<DefaultAllocator>) == 16);
 
 // String is a contiguous container.
-template<class T> inline constexpr bool cIsContiguous<StringBase<T>> = true;
+template<template <typename> typename T> inline constexpr bool cIsContiguous<StringBase<T>> = true;
 
 
-using String     = StringBase<Allocator<char>>;
-using TempString = StringBase<TempAllocator<char>>;
+using String     = StringBase<DefaultAllocator>;
+using TempString = StringBase<TempAllocator>;
 
 
 template <> struct Hash<String> : Hash<StringView> {};
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>::~StringBase()
 {
 	if (mData != cEmpty)
-		taAllocator::Free(mData, mCapacity);
+		Allocator::Free(mData, mCapacity);
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>::StringBase(StringBase&& ioOther)
 {
 	MoveFrom(gMove(ioOther));
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>& StringBase<taAllocator>::operator=(StringBase&& ioOther)
 {
 	MoveFrom(gMove(ioOther));
@@ -126,14 +130,14 @@ StringBase<taAllocator>& StringBase<taAllocator>::operator=(StringBase&& ioOther
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>::StringBase(const StringView& inString)
 {
 	CopyFrom(inString);
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>& StringBase<taAllocator>::operator=(const StringView& inString)
 {
 	CopyFrom(inString);
@@ -141,7 +145,7 @@ StringBase<taAllocator>& StringBase<taAllocator>::operator=(const StringView& in
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>::StringBase(InitializerList<char> inInitializerList)
 {
 	// Make sure we don't build a StringView from a nullptr.
@@ -150,7 +154,7 @@ StringBase<taAllocator>::StringBase(InitializerList<char> inInitializerList)
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 StringBase<taAllocator>& StringBase<taAllocator>::operator=(InitializerList<char> inInitializerList)
 {
 	// Make sure we don't build a StringView from a nullptr.
@@ -164,7 +168,7 @@ StringBase<taAllocator>& StringBase<taAllocator>::operator=(InitializerList<char
 
 
 // Note: inCapacity includes the null terminator.
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 void StringBase<taAllocator>::Reserve(int inCapacity)
 {
 	if (mCapacity >= inCapacity)
@@ -176,12 +180,12 @@ void StringBase<taAllocator>::Reserve(int inCapacity)
 	gAssert(inCapacity > 1); // Reserving for storing an empty string? That should not happen.
 
 	// Try to grow the allocation.
-	if (taAllocator::TryRealloc(mData, old_capacity, mCapacity))
+	if (mData != nullptr && Allocator::TryRealloc(mData, old_capacity, mCapacity))
 		return; // Success, nothing else to do.
 
 	// Allocate new data.
 	char* old_data = mData;
-	mData = taAllocator::Allocate(mCapacity);
+	mData = Allocator::Allocate(mCapacity);
 
 	// Copy old data to new.
 	gMemCopy(mData, old_data, mSize);
@@ -189,11 +193,11 @@ void StringBase<taAllocator>::Reserve(int inCapacity)
 
 	// Free old data.
 	if (old_data != cEmpty)
-		taAllocator::Free(old_data, old_capacity);
+		Allocator::Free(old_data, old_capacity);
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 void StringBase<taAllocator>::Resize(int inSize)
 {
 	if (inSize == 0 && mData == cEmpty)
@@ -206,17 +210,17 @@ void StringBase<taAllocator>::Resize(int inSize)
 }
 
 
-template <class taAllocator> void StringBase<taAllocator>::ShrinkToFit()
+template <template <typename> typename taAllocator> void StringBase<taAllocator>::ShrinkToFit()
 {
 	if (mData == cEmpty || mCapacity == (mSize + 1))
 		return;
 
-	if (taAllocator::TryRealloc(mData, mCapacity, mSize + 1))
+	if (Allocator::TryRealloc(mData, mCapacity, mSize + 1))
 		mCapacity = mSize + 1;
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 void StringBase<taAllocator>::Append(StringView inString)
 {
 	if (inString.Empty())
@@ -230,7 +234,7 @@ void StringBase<taAllocator>::Append(StringView inString)
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 void StringBase<taAllocator>::MoveFrom(StringBase&& ioOther)
 {
 	if (ioOther.mData == cEmpty)
@@ -247,6 +251,14 @@ void StringBase<taAllocator>::MoveFrom(StringBase&& ioOther)
 		// Moving from self is not allowed.
 		gAssert(mData != ioOther.mData);
 
+		// Free the existing data.
+		if (mData != cEmpty)
+			Allocator::Free(mData, mCapacity);
+
+		// Move the allocator.
+		GetAllocator() = gMove(ioOther.GetAllocator());
+		ioOther.GetAllocator() = Allocator();
+
 		mData     = ioOther.mData;
 		mSize     = ioOther.mSize;
 		mCapacity = ioOther.mCapacity;
@@ -258,7 +270,7 @@ void StringBase<taAllocator>::MoveFrom(StringBase&& ioOther)
 }
 
 
-template <class taAllocator>
+template <template <typename> typename taAllocator>
 void StringBase<taAllocator>::CopyFrom(StringView inOther)
 {
 	// Copying from self is not allowed (unless it's cEmpty).

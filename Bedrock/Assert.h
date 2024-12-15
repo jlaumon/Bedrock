@@ -25,3 +25,8 @@ bool gReportAssert(const char* inCondition, const char* inFile, int inLine);
 
 // Bound checking helper macro.
 #define gBoundsCheck(index, size) gAssert((index) >= 0 && (index) < (size))
+
+
+// Force a crash.
+// TODO: This needs to be improved. Do something with the message, do a proper crash instead of a breakpoint.
+[[noreturn]] inline void gCrash(const char* inMessage) { breakpoint; }

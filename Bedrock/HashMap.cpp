@@ -125,7 +125,7 @@ static void sLargeHashMapTest()
 
 REGISTER_TEST("Large HashMap")
 {
-	sLargeHashMapTest<Allocator>();
+	sLargeHashMapTest<DefaultAllocator>();
 };
 
 
@@ -175,7 +175,7 @@ static void sLargeHashSetTest()
 
 REGISTER_TEST("Large HashSet")
 {
-	sLargeHashSetTest<Allocator>();
+	sLargeHashSetTest<DefaultAllocator>();
 };
 
 
