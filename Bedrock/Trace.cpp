@@ -6,6 +6,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+static TraceCallback sTraceCallback = nullptr;
+
 namespace Details
 {
 	// The va_list version is kept out of the header to avoid including stdarg.h in the header (or defining it manually) for now.
@@ -22,9 +24,22 @@ void Details::Trace(const char* inFormat, ...)
 
 	va_end(args);
 
-	// For now just print to stdout.
-	// TODO add timestamps, thread name, log to file, etc.
-	puts(string.AsCStr());
+	// If there's a callback, use it.
+	if (sTraceCallback)
+	{
+		sTraceCallback(string);
+	}
+	else
+	{
+		// Otherwise just print to stdout.
+		puts(string.AsCStr());
+	}
 }
 
 
+void gSetTraceCallback(TraceCallback inCallback)
+{
+	gAssert(sTraceCallback == nullptr || inCallback == nullptr); // A callback is already set?
+
+	sTraceCallback = inCallback;
+}
