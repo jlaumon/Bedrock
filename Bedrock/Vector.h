@@ -65,6 +65,9 @@ struct Vector : private taAllocator<taType>
 
 	Allocator& GetAllocator() { return *this; }
 
+	constexpr taType* Data() { return mData; }
+	constexpr const taType* Data() const { return mData; }
+
 	constexpr taType* Begin() { return mData; }
 	constexpr taType* End()   { return mData + mSize; }
 	constexpr taType* begin() { return mData; }
@@ -119,10 +122,6 @@ private:
 };
 
 
-// Vector is a contiguous container.
-template<class taType, template <typename> typename taAllocator> inline constexpr bool cIsContiguous<Vector<taType, taAllocator>> = true;
-
-
 // Alias for a Vector using the TempAllocator.
 template <typename taType>
 using TempVector = Vector<taType, TempAllocator>;
@@ -138,6 +137,13 @@ using ArenaVector = Vector<taType, ArenaAllocator>;
 template <typename taType>
 using VMemVector = Vector<taType, VMemAllocator>;
 
+
+
+// All Vectors are contiguous containers.
+template<class taType, template <typename> typename taAllocator> inline constexpr bool cIsContiguous<Vector<taType, taAllocator>> = true;
+
+// VMemVector is stable, its data address never changes.
+template<class taType> inline constexpr bool cIsStable<VMemVector<taType>> = true;
 
 
 // Deduction guides for Span.
@@ -283,26 +289,35 @@ void Vector<taType, taAllocator>::Reserve(int inCapacity)
 	taType* old_data = mData;
 	mData = Allocator::Allocate(mCapacity);
 
-	if constexpr (cIsMoveConstructible<taType>)
+	if constexpr (cIsStable<Vector>)
 	{
-		// Move old data to new.
-		for (int i = 0, n = mSize; i < n; ++i)
-			gPlacementNew(mData[i], gMove(old_data[i]));
+		// If this vector type is stable, we never need to copy existing elements (TryRealloc should always work).
+		// This means taType does not need to have a copy constructor.
+		gAssert(old_data == nullptr);
 	}
 	else
 	{
-		// Copy old data to new.
-		for (int i = 0, n = mSize; i < n; ++i)
-			gPlacementNew(mData[i], old_data[i]);
-	}
+		if constexpr (cIsMoveConstructible<taType>)
+		{
+			// Move old data to new.
+			for (int i = 0, n = mSize; i < n; ++i)
+				gPlacementNew(mData[i], gMove(old_data[i]));
+		}
+		else
+		{
+			// Copy old data to new.
+			for (int i = 0, n = mSize; i < n; ++i)
+				gPlacementNew(mData[i], old_data[i]);
+		}
 
-	// Destroy and free old data.
-	if (old_data != nullptr)
-	{
-		for (int i = 0, n = mSize; i < n; ++i)
-			old_data[i].~taType();
-		
-		Allocator::Free(old_data, old_capacity);
+		// Destroy and free old data.
+		if (old_data != nullptr)
+		{
+			for (int i = 0, n = mSize; i < n; ++i)
+				old_data[i].~taType();
+			
+			Allocator::Free(old_data, old_capacity);
+		}
 	}
 }
 
@@ -541,7 +556,7 @@ template <typename taType, template <typename> typename taAllocator>
 void Vector<taType, taAllocator>::MoveFrom(Vector&& ioOther)
 {
 	// Moving from self is not allowed.
-	gAssert(mData != ioOther.mData);
+	gAssert(mData != ioOther.mData || mData == nullptr);
 
 	// Clear the current data.
 	ClearAndFreeMemory();

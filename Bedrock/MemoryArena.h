@@ -240,8 +240,10 @@ struct VMemArena : MemArena<taMaxPendingFrees>
 
 		Base::operator=((Base&&)ioOther);
 
-		mEndReservedOffset = ioOther.mEndReservedOffset;
-		ioOther.mEndReservedOffset = 0;
+		mCommitIncreaseSize         = ioOther.mCommitIncreaseSize;
+		mEndReservedOffset          = ioOther.mEndReservedOffset;
+		ioOther.mEndReservedOffset  = 0;
+		ioOther.mCommitIncreaseSize = 0;
 
 		return *this;
 	}
@@ -274,6 +276,8 @@ struct VMemArena : MemArena<taMaxPendingFrees>
 
 		return Base::TryRealloc(ioMemory, inNewSize);
 	}
+
+	int GetReservedSize() const { return mEndReservedOffset; }
 
 	using Base::IsLastAlloc;
 	using Base::cAlignment;

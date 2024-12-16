@@ -125,6 +125,10 @@ template<bool B, class T, class F> using Conditional = typename Details::Conditi
 // Each contiguous container needs to add its specialization.
 template<class T> constexpr bool cIsContiguous = false;
 
+// True if the elements of a container stay at the same address when it grows.
+// Each contiguous container needs to add its specialization.
+template<class T> constexpr bool cIsStable = false;
+
 // Equivalent to std::underlying_type
 template<class T> requires cIsEnum<T> using UnderlyingType = __underlying_type(T);
 

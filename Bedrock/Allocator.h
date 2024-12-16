@@ -73,8 +73,8 @@ struct VMemAllocator
 	static constexpr int64 cDefaultCommitSize   = VMemArenaType::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
 
 	VMemAllocator() = default;
-	VMemAllocator(int inReserveSizeInBytes, int inCommitIncreaseSizeInBytes = cDefaultCommitSize)
-		: mArena(inReserveSizeInBytes, inCommitIncreaseSizeInBytes) {}
+	VMemAllocator(int inReservedSizeInBytes, int inCommitIncreaseSizeInBytes = cDefaultCommitSize)
+		: mArena(inReservedSizeInBytes, inCommitIncreaseSizeInBytes) {}
 
 	// Allocate memory.
 	taType*			Allocate(int inSize);
@@ -83,9 +83,13 @@ struct VMemAllocator
 	// Try changing the size of an existing allocation, return false if unsuccessful.
 	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
+	const VMemArenaType* GetArena() const			{ return &mArena; }
+
 private:
 	VMemArenaType	mArena;
 };
+
+
 
 
 template <typename taType>
