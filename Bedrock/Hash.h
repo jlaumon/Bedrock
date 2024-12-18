@@ -35,18 +35,18 @@ template <typename taType> struct Hash;
 template <class taHash>
 concept cIsTransparent = requires { typename taHash::IsTransparent; };
 
-#define DECLARE_HASH(type)                                       \
-	inline uint64 gHash(type inValue, uint64 inSeed = cHashSeed) \
-	{                                                            \
-		return gHash(&inValue, sizeof(inValue), inSeed);         \
-	}                                                            \
-                                                                 \
-	template <> struct Hash<type>                                \
-	{                                                            \
-		uint64 operator()(type inValue) const                    \
-		{                                                        \
-			return gHash(inValue);                               \
-		}                                                        \
+#define DECLARE_HASH(type)                                             \
+	inline uint64 gHash(type inValue, uint64 inSeed = cHashSeed)       \
+	{                                                                  \
+		return Details::Rapidhash::rapid_mix((uint64)inValue, inSeed); \
+	}                                                                  \
+                                                                       \
+	template <> struct Hash<type>                                      \
+	{                                                                  \
+		uint64 operator()(type inValue) const                          \
+		{                                                              \
+			return gHash(inValue);                                     \
+		}                                                              \
 	};
 
 
