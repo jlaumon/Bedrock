@@ -283,7 +283,6 @@ REGISTER_TEST("ArenaVector")
 };
 
 
-
 REGISTER_TEST("VMemVector")
 {
 	VMemVector<int> test;
@@ -326,4 +325,46 @@ REGISTER_TEST("VMemVector")
 	test2 = gMove(test);
 	TEST_TRUE(Span(test2) == heap_vec);
 	TEST_TRUE(test.Empty());
+};
+
+
+REGISTER_TEST("FixedVector")
+{
+	FixedVector<int, 4> test;
+	test = { 1, 2, 3, 4 };
+
+	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(test.Capacity() == 4);
+	TEST_TRUE(test.MaxCapacity() == 4);
+
+	int* test_begin = test.Begin();
+
+	Vector<int> heap_vec = test;
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == Span(heap_vec));
+
+	heap_vec = { 7, 8, 9 };
+	test     = heap_vec;
+	TEST_TRUE(test.Begin() == test_begin);
+	TEST_TRUE(test.Begin() != heap_vec.Begin());
+	TEST_TRUE(Span(test) == heap_vec);
+
+	test.PushBack(1);
+	test.PopBack();
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size());
+	
+	FixedVector<int, 8> test2;
+
+	// Copy to a different vector
+	test2 = test;
+	TEST_TRUE(test2 == Span(test));
+	TEST_TRUE(test2.Data() != test.Data());
+
+	// Move also copies since there's no move operator
+	test2 = gMove(test);
+	TEST_TRUE(Span(test2) == heap_vec);
+	TEST_TRUE(!test.Empty());
+	TEST_TRUE(test2.Data() != test.Data());
 };

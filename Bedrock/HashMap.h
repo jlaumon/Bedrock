@@ -541,8 +541,8 @@ private:
 		mBuckets[bucket_index] = {};
 	}
 
-	Vector<KeyValue, taAllocator> mKeyValues;	// Key-value pairs stored in a dense array.
-	Vector<Bucket, taAllocator>   mBuckets;		// Bucket metadata.
+	Vector<KeyValue, taAllocator<KeyValue>>	mKeyValues;		// Key-value pairs stored in a dense array.
+	Vector<Bucket, taAllocator<Bucket>>		mBuckets;		// Bucket metadata.
 };
 
 

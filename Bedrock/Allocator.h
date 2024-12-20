@@ -34,21 +34,22 @@ struct TempAllocator
 
 
 // Allocates from an externally provided MemArena.
-template <typename taType, int taMaxPendingFrees>
-struct ArenaAllocatorBase
+template <typename taType, int taMaxPendingFrees = cDefaultMaxPendingFrees>
+struct ArenaAllocator
 {
 	using MemArenaType = MemArena<taMaxPendingFrees>;
 
-	ArenaAllocatorBase() = default;
-	ArenaAllocatorBase(MemArenaType& inArena) : mArena(&inArena) {}
+	ArenaAllocator() = default;
+	ArenaAllocator(MemArenaType& inArena) : mArena(&inArena) {}
 
 	// Allocate memory.
-	taType*			Allocate(int inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
-	void			Free(taType* inPtr, int inSize)	{ mArena->Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	taType*				Allocate(int inSize)				{ return (taType*)mArena->Alloc(inSize * sizeof(taType)).mPtr; }
+	void				Free(taType* inPtr, int inSize)		{ mArena->Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
+	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
+	int					MaxCapacity() const					{ return (int)mArena->GetMemBlock().mSize / sizeof(taType); }
 	MemArenaType*		GetArena()							{ return mArena; }
 	const MemArenaType* GetArena() const					{ return mArena; }
 
@@ -56,39 +57,56 @@ private:
 	MemArenaType*		mArena = nullptr;
 };
 
-// Shorter version with default number of allowed out of order frees.
-// This alias is needed because containers only accept alloctor with a single template parameter.
-template <typename taType>
-using ArenaAllocator = ArenaAllocatorBase<taType, cDefaultMaxPendingFrees>;
-
 
 // Allocates from an internal VMemArena which uses virtual memory.
 // The VMemArena can grow as necessary by committing more virtual memory.
 template <typename taType>
 struct VMemAllocator
 {
-	using VMemArenaType = VMemArena<0>; // Don't need to support any out of order free since the arena isn't shared.
+	using MemArenaType = VMemArena<0>; // Don't need to support any out of order free since the arena isn't shared.
 
-	static constexpr int64 cDefaultReservedSize = VMemArenaType::cDefaultReservedSize; // By default the arena will reserve that much virtual memory.
-	static constexpr int64 cDefaultCommitSize   = VMemArenaType::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
+	static constexpr int64 cDefaultReservedSize = MemArenaType::cDefaultReservedSize; // By default the arena will reserve that much virtual memory.
+	static constexpr int64 cDefaultCommitSize   = MemArenaType::cDefaultCommitSize;   // By default the arena will commit that much virtual memory every time it grows.
 
 	VMemAllocator() = default;
 	VMemAllocator(int inReservedSizeInBytes, int inCommitIncreaseSizeInBytes = cDefaultCommitSize)
 		: mArena(inReservedSizeInBytes, inCommitIncreaseSizeInBytes) {}
 
 	// Allocate memory.
-	taType*			Allocate(int inSize);
-	void			Free(taType* inPtr, int inSize)	{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+	taType*				Allocate(int inSize);
+	void				Free(taType* inPtr, int inSize)		{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
-	bool			TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
+	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
-	const VMemArenaType* GetArena() const			{ return &mArena; }
+	int					MaxCapacity() const					{ return mArena.GetReservedSize() / sizeof(taType); }
+	const MemArenaType* GetArena() const					{ return &mArena; }
 
 private:
-	VMemArenaType	mArena;
+	MemArenaType	mArena;
 };
 
+
+// Allocates from an internal FixedMemArena.
+template <typename taType, int taSize>
+struct FixedAllocator
+{
+	using MemArenaType = FixedMemArena<taSize * sizeof(taType), 0>; // Don't need to support any out of order free since the arena isn't shared.
+
+	// Allocate memory.
+	// Allocate memory.
+	taType*				Allocate(int inSize)				{ return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr; }
+	void				Free(taType* inPtr, int inSize)		{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
+
+	// Try changing the size of an existing allocation, return false if unsuccessful.
+	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
+
+	constexpr int		MaxCapacity() const					{ return taSize; }
+	const MemArenaType* GetArena() const					{ return &mArena; }
+
+private:
+	MemArenaType	mArena;
+};
 
 
 
@@ -130,7 +148,7 @@ bool TempAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inN
 
 
 template <typename taType, int taMaxPendingFrees>
-bool ArenaAllocatorBase<taType, taMaxPendingFrees>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
+bool ArenaAllocator<taType, taMaxPendingFrees>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
@@ -145,7 +163,7 @@ taType* VMemAllocator<taType>::Allocate(int inSize)
 	// If the arena wasn't initialized yet, do it now (with default values).
 	// It's better to do it lazily than reserving virtual memory in every container default constructor.
 	if (mArena.GetMemBlock() == nullptr) [[unlikely]]
-		mArena = VMemArenaType(cDefaultReservedSize, cDefaultCommitSize);
+		mArena = MemArenaType(cDefaultReservedSize, cDefaultCommitSize);
 
 	return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr;
 }
@@ -153,6 +171,16 @@ taType* VMemAllocator<taType>::Allocate(int inSize)
 
 template <typename taType>
 bool VMemAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
+{
+	gAssert(inPtr != nullptr); // Call Allocate instead.
+
+	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
+	return mArena.TryRealloc(mem, inNewSize * sizeof(taType));
+}
+
+
+template <typename taType, int taSize>
+bool FixedAllocator<taType, taSize>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
