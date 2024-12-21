@@ -63,9 +63,13 @@ struct Vector : private taAllocator
 	int Capacity() const { return mCapacity; }
 	bool Empty() const { return mSize == 0; }
 
-	int MaxCapacity() const requires requires { taAllocator().MaxCapacity(); } // Nicer syntax than SFINAE heh
+	static constexpr bool cHasMaxSize = requires { taAllocator().MaxSize(); };
+
+	// Return the max size that this vector can have.
+	// Note: This method only exists for allocators that have an actual max size.
+	int MaxSize() const requires cHasMaxSize
 	{
-		return GetAllocator().MaxCapacity();
+		return GetAllocator().MaxSize();
 	}
 
 	const Allocator& GetAllocator() const { return *this; }
@@ -619,7 +623,18 @@ void Vector<taType, taAllocator>::Grow(int inCapacity)
 	if (mCapacity >= inCapacity) [[likely]]
 		return;
 
-	Reserve(gMax(mCapacity + mCapacity / 2, inCapacity));
+	// Grow by 50%
+	int new_capacity = mCapacity + mCapacity / 2;
+
+	// If the allocator has max size, make sure we don't accidentally go over it.
+	if constexpr (cHasMaxSize)
+		new_capacity = gMin(new_capacity, MaxSize());
+
+	// Make sure we get at least the requested capacity.
+	// If this goes above max size, it'll fail to allocate (as expected).
+	new_capacity = gMax(new_capacity, inCapacity);
+
+	Reserve(new_capacity);
 }
 
 

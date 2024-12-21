@@ -330,12 +330,15 @@ REGISTER_TEST("VMemVector")
 
 REGISTER_TEST("FixedVector")
 {
-	FixedVector<int, 4> test;
-	test = { 1, 2, 3, 4 };
+	FixedVector<int, 6> test;
+	test = { 1, 2, 3, 4, 5 };
 
-	TEST_TRUE(test.Size() == 4);
-	TEST_TRUE(test.Capacity() == 4);
-	TEST_TRUE(test.MaxCapacity() == 4);
+	TEST_TRUE(test.Size() == 5);
+	TEST_TRUE(test.Capacity() == 5);
+	TEST_TRUE(test.MaxSize() == 6);
+
+	test.PushBack(6); // Should not grow above max size
+	TEST_TRUE(test.Capacity() == 6);
 
 	int* test_begin = test.Begin();
 

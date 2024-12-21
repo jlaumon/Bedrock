@@ -49,7 +49,6 @@ struct ArenaAllocator
 	// Try changing the size of an existing allocation, return false if unsuccessful.
 	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
-	int					MaxCapacity() const					{ return (int)mArena->GetMemBlock().mSize / sizeof(taType); }
 	MemArenaType*		GetArena()							{ return mArena; }
 	const MemArenaType* GetArena() const					{ return mArena; }
 
@@ -79,7 +78,7 @@ struct VMemAllocator
 	// Try changing the size of an existing allocation, return false if unsuccessful.
 	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
-	int					MaxCapacity() const					{ return mArena.GetReservedSize() / sizeof(taType); }
+	int					MaxSize() const						{ return mArena.GetReservedSize() / sizeof(taType); }
 	const MemArenaType* GetArena() const					{ return &mArena; }
 
 private:
@@ -91,9 +90,9 @@ private:
 template <typename taType, int taSize>
 struct FixedAllocator
 {
-	using MemArenaType = FixedMemArena<taSize * sizeof(taType), 0>; // Don't need to support any out of order free since the arena isn't shared.
+	static constexpr int cMemAreanaSizeInBytes = (int)gAlignUp(taSize * sizeof(taType), MemArena<>::cAlignment);
+	using MemArenaType = FixedMemArena<cMemAreanaSizeInBytes, 0>; // Don't need to support any out of order free since the arena isn't shared.
 
-	// Allocate memory.
 	// Allocate memory.
 	taType*				Allocate(int inSize)				{ return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr; }
 	void				Free(taType* inPtr, int inSize)		{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
@@ -101,7 +100,7 @@ struct FixedAllocator
 	// Try changing the size of an existing allocation, return false if unsuccessful.
 	bool				TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize);
 
-	constexpr int		MaxCapacity() const					{ return taSize; }
+	static int			MaxSize()							{ return taSize; }
 	const MemArenaType* GetArena() const					{ return &mArena; }
 
 private:
