@@ -92,6 +92,20 @@ void Thread::Cleanup()
 }
 
 
+// Number of threads that can run concurrently.
+// Equivalent to the number of CPU cores (incuding hyperthreading logical cores).
+int gThreadHardwareConcurrency()
+{
+	static const int number_of_cpus = [] {
+		SYSTEM_INFO system_info = {};
+		GetSystemInfo(&system_info);
+		return gMax(1, (int)system_info.dwNumberOfProcessors);
+	}();
+
+	return number_of_cpus;
+}
+
+
 // Yield the processor to other threads that are ready to run.
 void gYieldThread()
 {
@@ -127,4 +141,6 @@ REGISTER_TEST("Thread")
 	thread.Join();
 
 	TEST_TRUE(set_by_thread);
+
+	TEST_TRUE(gThreadHardwareConcurrency() >= 1);
 };

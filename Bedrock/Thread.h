@@ -61,3 +61,7 @@ private:
 
 // Yield the processor to other threads that are ready to run.
 void gThreadYield();
+
+// Number of threads that can run concurrently.
+// Equivalent to the number of CPU cores (incuding hyperthreading logical cores).
+int gThreadHardwareConcurrency();
