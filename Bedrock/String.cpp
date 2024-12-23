@@ -124,3 +124,39 @@ REGISTER_TEST("TempString")
 	test.ShrinkToFit();
 	TEST_TRUE(test.Capacity() == test.Size() + 1);
 };
+
+
+
+REGISTER_TEST("FixedString")
+{
+	FixedString<32> test = "test";
+
+	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(test.Capacity() >= 5);
+	TEST_TRUE(test == "test");
+	TEST_TRUE(*test.End() == 0);
+	TEST_TRUE(test.MaxSize() == 31); // One extra char for the null terminator
+
+	char* test_begin = test.Begin();
+	test.Reserve(30);
+	TEST_TRUE(test.Begin() == test_begin); // Should have resized the memory block.
+	TEST_TRUE(test.Capacity() >= 30);
+	TEST_TRUE(test.Size() == 4);
+	TEST_TRUE(*test.End() == 0);
+
+	String non_temp = test;
+	TEST_TRUE(test.Begin() != non_temp.Begin());
+	TEST_TRUE(test == non_temp);
+
+	non_temp = "other test";
+	test     = non_temp;
+	TEST_TRUE(test.Begin() == test_begin);
+	TEST_TRUE(test.Begin() != non_temp.Begin());
+	TEST_TRUE(test == non_temp);
+
+	test.Append("add");
+	test.RemoveSuffix(3);
+	TEST_TRUE(test.Capacity() > test.Size());
+	test.ShrinkToFit();
+	TEST_TRUE(test.Capacity() == test.Size() + 1);
+};
