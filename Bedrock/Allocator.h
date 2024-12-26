@@ -34,10 +34,10 @@ struct TempAllocator
 
 
 // Allocates from an externally provided MemArena.
-template <typename taType, int taMaxPendingFrees = cDefaultMaxPendingFrees>
+template <typename taType, typename taMemArenaType = MemArena<cDefaultMaxPendingFrees>>
 struct ArenaAllocator
 {
-	using MemArenaType = MemArena<taMaxPendingFrees>;
+	using MemArenaType = taMemArenaType;
 
 	ArenaAllocator() = default;
 	ArenaAllocator(MemArenaType& inArena) : mArena(&inArena) {}
@@ -72,7 +72,7 @@ struct VMemAllocator
 		: mArena(inReservedSizeInBytes, inCommitIncreaseSizeInBytes) {}
 
 	// Allocate memory.
-	taType*				Allocate(int inSize);
+	taType*				Allocate(int inSize)				{ return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr; }
 	void				Free(taType* inPtr, int inSize)		{ mArena.Free({ (uint8*)inPtr, inSize * (int64)sizeof(taType) }); }
 
 	// Try changing the size of an existing allocation, return false if unsuccessful.
@@ -146,25 +146,13 @@ bool TempAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inN
 }
 
 
-template <typename taType, int taMaxPendingFrees>
-bool ArenaAllocator<taType, taMaxPendingFrees>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
+template <typename taType, typename taMemArenaType>
+bool ArenaAllocator<taType, taMemArenaType>::TryRealloc(taType* inPtr, int inCurrentSize, int inNewSize)
 {
 	gAssert(inPtr != nullptr); // Call Allocate instead.
 
 	MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
 	return mArena->TryRealloc(mem, inNewSize * sizeof(taType));
-}
-
-
-template <typename taType>
-taType* VMemAllocator<taType>::Allocate(int inSize)
-{
-	// If the arena wasn't initialized yet, do it now (with default values).
-	// It's better to do it lazily than reserving virtual memory in every container default constructor.
-	if (mArena.GetMemBlock() == nullptr) [[unlikely]]
-		mArena = MemArenaType(cDefaultReservedSize, cDefaultCommitSize);
-
-	return (taType*)mArena.Alloc(inSize * sizeof(taType)).mPtr;
 }
 
 

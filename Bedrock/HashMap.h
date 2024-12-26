@@ -71,7 +71,12 @@ struct SetInsertResult
 // Heavily insipired from https://github.com/martinus/unordered_dense.
 // The key-values are stored contiguously (no holes), so iteration is very fast. Bucket metadata is stored separately.
 // Supports TempAllocator. Behaves as a set if taValue is void (see HashSet typedef) below.
-template <typename taKey, typename taValue, typename taHash = Hash<taKey>, template <typename> typename taAllocator = DefaultAllocator>
+template <
+	typename taKey,
+	typename taValue,
+	typename taHash = Hash<taKey>,
+	template <typename> typename taAllocator = DefaultAllocator
+>
 struct HashMap : taHash
 {
 	static constexpr bool cIsMap = !cIsVoid<taValue>;
@@ -99,10 +104,17 @@ struct HashMap : taHash
 	bool Empty() const { return mKeyValues.Empty(); }
 	bool IsFull() const	{ return mKeyValues.Size() == mKeyValues.Capacity(); }
 
+	int Size() const { return mKeyValues.Size(); }
+	int Capacity() const { return mKeyValues.Capacity(); }
+
 	ConstIter Begin() const { return mKeyValues.Begin(); }
 	ConstIter End() const { return mKeyValues.End(); }
 	Iter Begin() { return mKeyValues.Begin(); }
 	Iter End() { return mKeyValues.End(); }
+	ConstIter begin() const { return mKeyValues.Begin(); }
+	ConstIter end() const { return mKeyValues.End(); }
+	Iter begin() { return mKeyValues.Begin(); }
+	Iter end() { return mKeyValues.End(); }
 
 	// Find (non-const) ---------------------------------------
 
@@ -268,7 +280,32 @@ struct HashMap : taHash
 		return EraseInternal(inKey);
 	}
 
-private:
+	Iter Erase(Iter inIter)
+	{
+		EraseInternal(GetKey(*inIter));
+		return inIter;
+	}
+
+	// Reserve (Map and Set) -----------------------------------
+	
+	void Reserve(int inCapacity)
+	{
+		if (inCapacity <= Capacity())
+			return;
+
+		// Capacity is in number of KeyValues.
+		// Number of buckets has to be a power of 2.
+		int new_buckets_size = (int)gGetNextPow2(inCapacity);
+
+		// Also we can only use ~80% of the buckets, so double the number again if that wouldn't fit.
+		int num_key_values = new_buckets_size * 13 / 16; // 13/16 = 0.8125
+		if (num_key_values < inCapacity)
+			new_buckets_size *= 2;
+
+		Grow(new_buckets_size);
+	}
+
+protected:
 	using Bucket = Details::HashMapBucket;
 
 	// Get the mask to use when incrementing bucket indices to get wrap-around.
@@ -289,9 +326,12 @@ private:
 	}
 
 	// Increase the capacity of the map.
-	void Grow()
+	void Grow(int inNumBuckets)
 	{
-		int new_buckets_size = gMax(mBuckets.Size() * 2, 16);
+		gAssert(inNumBuckets == 0 || gIsPow2(inNumBuckets));
+		gAssert(inNumBuckets == 0 || inNumBuckets > mBuckets.Size());
+
+		int new_buckets_size = gMax(inNumBuckets, 16);
 		int new_key_values_size = new_buckets_size * 13 / 16; // 13/16 = 0.8125
 
 		// Free the buckets first to make sure the TempAllocator can grow the key-values allocation.
@@ -343,7 +383,7 @@ private:
 	InsertResult EmplaceInternal(taAltKey&& ioKey, taArgs&&... ioArgs)
 	{
 		if (IsFull()) [[unlikely]]
-			Grow();
+			Grow(mBuckets.Size() * 2);
 
 		// Try to find the key.
 		auto [bucket_index, distance_and_fingerprint, found] = FindBucket(ioKey);
@@ -541,14 +581,107 @@ private:
 		mBuckets[bucket_index] = {};
 	}
 
-	Vector<KeyValue, taAllocator<KeyValue>>	mKeyValues;		// Key-value pairs stored in a dense array.
-	Vector<Bucket, taAllocator<Bucket>>		mBuckets;		// Bucket metadata.
+	using KeyValueVector = Vector<KeyValue, taAllocator<KeyValue>>;
+	using BucketVector = Vector<Bucket, taAllocator<Bucket>>;
+
+	KeyValueVector	mKeyValues;		// Key-value pairs stored in a dense array.
+	BucketVector	mBuckets;		// Bucket metadata.
 };
 
 
-// Dense HashSet class.
-template <typename taKey, typename taHash = Hash<taKey>, template <typename> typename taAllocator = DefaultAllocator>
+namespace Details
+{
+	// VMem AreanaAllocator Alias with a single template param, to use with VMemHashMap.
+	template <class taType>
+	using VMemHashMapArenaAllocator = ArenaAllocator<taType, VMemArena<0>>;
+}
+
+
+// Alias for a HashMap using the TempAllocator.
+// Resize without moving the Key/Values as long as it's the last Temp allocation (still needs a rehash). Allocates from the heap as a fallback.
+template <
+	typename taKey,
+	typename taValue,
+	typename taHash = Hash<taKey>
+>
+using TempHashMap = HashMap<taKey, taValue, taHash, TempAllocator>;
+
+// HashMap variant using the VMemAllocator.
+// It allocates virtual memory to grow while keepting the Key/Values at the same address.
+// This is meant for very large HashMaps. Virtual memory operations are more expensive than small heap allocations.
+template < 
+	typename taKey,
+	typename taValue,
+	typename taHash = Hash<taKey>
+>
+struct VMemHashMap : HashMap<taKey, taValue, taHash, Details::VMemHashMapArenaAllocator>
+{
+	VMemHashMap()
+	{
+		mKeyValues = KeyValueVector(mVMemArena);
+		mBuckets   = BucketVector(mVMemArena);
+	}
+
+	VMemHashMap(const VMemHashMap& inOther)
+		: VMemHashMap() // Setup the allocator first.
+	{
+		*this = inOther;
+	}
+
+	VMemHashMap(VMemArena<0>&& ioMemArena)
+		: mVMemArena(gMove(ioMemArena))
+	{
+		mKeyValues = KeyValueVector(mVMemArena);
+		mBuckets   = BucketVector(mVMemArena);
+	}
+
+	~VMemHashMap()
+	{
+		// Clear the vectors manually first because they'll be destroyed after the VMemArena.
+		mBuckets.ClearAndFreeMemory();
+		mKeyValues.ClearAndFreeMemory();
+	}
+
+	// Move not allowed for now (could be implemented, but moving the arena itself is annoying).
+	VMemHashMap(VMemHashMap&&) = delete;
+	VMemHashMap& operator=(VMemHashMap&& ioOther) = delete;
+
+private:
+	using Base = HashMap<taKey, taValue, taHash, Details::VMemHashMapArenaAllocator>;
+	using typename Base::KeyValueVector;
+	using typename Base::BucketVector;
+	using Base::mKeyValues;
+	using Base::mBuckets;
+	VMemArena<0> mVMemArena;
+};
+
+
+// HashSet variant of the HashMap (no values).
+template <
+	typename taKey,
+	typename taHash = Hash<taKey>,
+	template <typename> typename taAllocator = DefaultAllocator
+>
 using HashSet = HashMap<taKey, void, taHash, taAllocator>;
+
+
+// Alias for a HashSet using the TempAllocator.
+// Resize without moving the Keys as long as it's the last Temp allocation (still needs a rehash). Allocates from the heap as a fallback.
+template <
+	typename taKey,
+	typename taHash = Hash<taKey>
+>
+using TempHashSet = HashSet<taKey, taHash, TempAllocator>;
+
+
+// Alias for a HashSet using the VMemAllocator.
+// It allocates virtual memory to grow while keepting the Keys at the same address.
+// This is meant for very large HashSets. Virtual memory operations are more expensive than small heap allocations.
+template <
+	typename taKey,
+	typename taHash = Hash<taKey>
+>
+using VMemHashSet = VMemHashMap<taKey, void, taHash>;
 
 
 template <typename taKey, typename taValue, typename taHash, template <typename> class taAllocator>

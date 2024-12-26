@@ -250,7 +250,10 @@ struct VMemArena : MemArena<taMaxPendingFrees>
 
 	MemBlock Alloc(int inSize)
 	{
-		gAssert(mBeginPtr != nullptr); // Need to initialize with a MemBlock first.
+		// If the arena wasn't initialized yet, do it now (with default values).
+		// It's better to do it lazily than reserving virtual memory in every container default constructor.
+		if (mBeginPtr == nullptr) [[unlikely]]
+			*this = VMemArena(cDefaultReservedSize, cDefaultCommitSize);
 
 		int aligned_size       = (int)gAlignUp(inSize, cAlignment);
 		int new_current_offset = mCurrentOffset + aligned_size;

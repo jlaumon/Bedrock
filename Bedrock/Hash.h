@@ -2,6 +2,7 @@
 #pragma once
 
 #include <Bedrock/Core.h>
+#include <Bedrock/TypeTraits.h>
 
 // Let's save including intrin.h for just one function.
 #if defined(_MSC_VER) && defined(_M_X64) && !defined(_M_ARM64EC)
@@ -35,30 +36,38 @@ template <typename taType> struct Hash;
 template <class taHash>
 concept cIsTransparent = requires { typename taHash::IsTransparent; };
 
-#define DECLARE_HASH(type)                                             \
-	inline uint64 gHash(type inValue, uint64 inSeed = cHashSeed)       \
-	{                                                                  \
-		return Details::Rapidhash::rapid_mix((uint64)inValue, inSeed); \
-	}                                                                  \
-                                                                       \
-	template <> struct Hash<type>                                      \
-	{                                                                  \
-		uint64 operator()(type inValue) const                          \
-		{                                                              \
-			return gHash(inValue);                                     \
-		}                                                              \
-	};
+// Very fast hash for integer types. CAVEAT: returns 0 for a value of 0!
+template <Integral taType> inline uint64 gHash(taType inValue)
+{
+	// Note: Seed is not exposed here because combining anything with 0 would return 0.
+	return Details::Rapidhash::rapid_mix((uint64)inValue, cHashSeed);
+}
 
+// Slighly slower hash for integer types that allows a seed (useful to combine multiple hashes).
+template <Integral taType> inline uint64 gHash(taType inValue, uint64 inSeed)
+{
+	return Details::Rapidhash::rapidhash_withSeed(&inValue, sizeof(inValue), inSeed);
+}
 
-DECLARE_HASH(int8)
-DECLARE_HASH(uint8)
-DECLARE_HASH(int16)
-DECLARE_HASH(uint16)
-DECLARE_HASH(int32)
-DECLARE_HASH(uint32)
-DECLARE_HASH(int64)
-DECLARE_HASH(uint64)
-DECLARE_HASH(int)
+// Hash struct specialization for integers. To use with HashMap/HashSet.
+template <Integral taType>
+struct Hash<taType>
+{
+	uint64 operator()(taType inValue) const
+	{
+		return gHash(inValue);
+	}
+};
+
+// Hash struct specialization for pointers. To use with HashMap/HashSet.
+template <typename taType>
+struct Hash<taType*>
+{
+	uint64 operator()(taType* inValue) const
+	{
+		return gHash((uint64)inValue);
+	}
+};
 
 
 

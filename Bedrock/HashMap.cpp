@@ -47,7 +47,20 @@ REGISTER_TEST("HashMap")
 	TEST_TRUE(map.Erase("pretzel"));
 	TEST_TRUE(map.Erase("brioche"));
 	TEST_TRUE(map.Erase("croissant"));
+};
 
+
+REGISTER_TEST("HashSet Reserve")
+{
+	HashSet<int> set;
+	set.Insert(42);
+
+	for (int i = 0; i < 100; i++)
+	{
+		set.Reserve(i);
+		TEST_TRUE(set.Capacity() >= i);
+		TEST_TRUE(set.Contains(42));
+	}
 };
 
 
@@ -88,11 +101,9 @@ REGISTER_TEST("HashSet")
 };
 
 
-template <template <typename> typename taAllocator>
-static void sLargeHashMapTest()
+template <class taHashMap>
+static void sLargeHashMapTest(taHashMap& map)
 {
-	HashMap<int, int, Hash<int>, taAllocator> map;
-
 	constexpr int cSize         = 100000;
 	constexpr int cInitialRandSeed = 42;
 
@@ -115,6 +126,20 @@ static void sLargeHashMapTest()
 		TEST_TRUE(iter->mValue == rand_seed);
 	}
 
+	// Make a copy
+	decltype(map) map2 = map;
+
+	// Check that all the values are found in copy.
+	rand_seed = cInitialRandSeed;
+	for (int i = 0; i < cSize; i++)
+	{
+		rand_seed = gRand32(rand_seed);
+		auto iter = map2.Find(i);
+		TEST_TRUE(iter != map2.End());
+		TEST_TRUE(iter->mKey == i);
+		TEST_TRUE(iter->mValue == rand_seed);
+	}
+
 	// Remove all the values.
 	for (int i = 0; i < cSize; i++)
 	{
@@ -125,7 +150,8 @@ static void sLargeHashMapTest()
 
 REGISTER_TEST("Large HashMap")
 {
-	sLargeHashMapTest<DefaultAllocator>();
+	HashMap<int, int> map;
+	sLargeHashMapTest(map);
 };
 
 
@@ -133,15 +159,23 @@ REGISTER_TEST("Large Temp HashMap")
 {
 	TEST_INIT_TEMP_MEMORY(100_KiB);
 
-	sLargeHashMapTest<TempAllocator>();
+	TempHashMap<int, int> map;
+	sLargeHashMapTest(map);
 };
 
 
-template <template <typename> typename taAllocator>
-static void sLargeHashSetTest()
+REGISTER_TEST("Large VMem HashMap")
 {
-	HashSet<int, Hash<int>, taAllocator> set;
+	TEST_INIT_TEMP_MEMORY(100_KiB);
 
+	VMemHashMap<int, int> map;
+	sLargeHashMapTest(map);
+};
+
+
+
+static void sLargeHashSetTest(auto& set)
+{
 	constexpr int cSize         = 100000;
 	constexpr int cInitialRandSeed = 42;
 
@@ -175,7 +209,8 @@ static void sLargeHashSetTest()
 
 REGISTER_TEST("Large HashSet")
 {
-	sLargeHashSetTest<DefaultAllocator>();
+	HashSet<int> set;
+	sLargeHashSetTest(set);
 };
 
 
@@ -183,5 +218,15 @@ REGISTER_TEST("Large Temp HashSet")
 {
 	TEST_INIT_TEMP_MEMORY(100_KiB);
 
-	sLargeHashSetTest<TempAllocator>();
+	TempHashSet<int> set;
+	sLargeHashSetTest(set);
+};
+
+
+REGISTER_TEST("Large VMem HashSet")
+{
+	TEST_INIT_TEMP_MEMORY(100_KiB);
+
+	VMemHashSet<int> set;
+	sLargeHashSetTest(set);
 };
