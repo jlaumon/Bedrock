@@ -13,11 +13,10 @@ StringView            string_view;   // Roughly equivalent to std::string_view
 HashMap<int, int>     hash_map;      // Dense open addressed (Robin Hood) hash map. Key-value pairs are stored contiguously.
 HashSet<int>          hash_set;      // Same as HashMap, but without values.
 
-// All containers also come in a Temp flavor that doesn't use the heap, and instead allocate from a stack-like memory allocator.
-// Allocation is extremely fast, and containers can resize without moving elements as long as they're the last allocation.
-TempVector<int>       temp_vector;
-TempString            temp_string;
-TempHashMap<int, int> temp_hash_map;
-TempHashSet<int>      temp_hash_set;
+// All containers also come in different allocator flavors.
+TempVector	// Allocates from a thread local arena. Falls back to the heap if it runs out.
+FixedVector	// Allocates from a fixed-size arena embedded in the container.
+VMemVector	// Allocates from a virtual memory arena embedded in the container. Can grow while keeping a stable address.
+ArenaVector	// Allocates from an externally provided arena.
 
 ```
