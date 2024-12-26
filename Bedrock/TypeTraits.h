@@ -139,4 +139,6 @@ template<class taEnum> requires cIsEnum<taEnum>
 // Equivalent to std::is_integral
 template<class T> constexpr bool cIsIntegral = cIsAnyOf<RemoveCV<T>, bool, char, signed char, unsigned char, short, unsigned short, int, unsigned int, long, unsigned long, long long, unsigned long long>;
 
-
+// Equivalent to std::integral
+template <class T> concept Integral = cIsIntegral<T>;
+ 
