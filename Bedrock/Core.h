@@ -112,6 +112,31 @@ constexpr bool  gIsPow2(int64 inValue)								{ return inValue != 0 && (inValue 
 constexpr int64 gAlignUp(int64 inValue, int64 inPow2Alignment)		{ return (inValue + (inPow2Alignment - 1)) & ~(inPow2Alignment - 1); }
 constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValue & ~(inPow2Alignment - 1); }
 
+#ifdef _MSC_VER
+extern "C" unsigned char _BitScanReverse64(unsigned long* _Index, unsigned __int64 _Mask);
+#endif
+
+inline int gCountLeadingZeros64(uint64 inValue)
+{
+	gAssert(inValue != 0);
+#ifdef __clang__
+	return __builtin_clzll(inValue);
+#elif _MSC_VER
+	uint32 index;
+	_BitScanReverse64(&index, inValue);
+	return 63 - index;
+#else
+#error Unknown compiler
+#endif
+}
+
+inline int64 gGetNextPow2(int64 inValue)
+{
+	if (inValue <= 1) [[unlikely]]
+		return 1;
+	return (int64)1 << (64 - gCountLeadingZeros64(inValue - 1));
+}
+
 
 // Some useful C std function replacements to avoid an include or because the real ones aren't constexpr.
 force_inline constexpr int gStrLen(const char* inString)								{ return (int)__builtin_strlen(inString); }
