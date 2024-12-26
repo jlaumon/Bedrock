@@ -286,7 +286,8 @@ void Vector<taType, taAllocator>::ClearAndFreeMemory()
 	if (mData != nullptr)
 	{
 		Allocator::Free(mData, mCapacity);
-		mData = nullptr;
+		mData     = nullptr;
+		mCapacity = 0;
 	}
 }
 
