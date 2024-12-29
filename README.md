@@ -17,8 +17,9 @@ HashSet<int>        // Same as HashMap, but without values.
 
 ## Allocators 
 
+All containers come in different allocator flavors:
+
 ```c++
-// All containers also come in different allocator flavors.
 TempVector<int>     // Allocates from a thread local arena. Falls back to the heap if it runs out.
 FixedVector<int>    // Allocates from a fixed-size arena embedded in the container.
 VMemVector<int>     // Allocates from a virtual memory arena embedded in the container. Can grow while keeping a stable address.
