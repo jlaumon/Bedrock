@@ -33,13 +33,13 @@ Write tests anywhere:
 ```c++
 REGISTER_TEST("Span")
 {
-	int values[] = { 1, 2, 3, 4, 5 };
-	Span test = values;
+    int values[] = { 1, 2, 3, 4, 5 };
+    Span test = values;
 
-	Span first_two = test.First(2);
-	TEST_TRUE(first_two.Size() == 2);
-	TEST_TRUE(first_two[0] == 1);
-	TEST_TRUE(first_two[1] == 2);
+    Span first_two = test.First(2);
+    TEST_TRUE(first_two.Size() == 2);
+    TEST_TRUE(first_two[0] == 1);
+    TEST_TRUE(first_two[1] == 2);
 };
 ```
 
@@ -48,4 +48,8 @@ The run them with `gRunAllTests()`.
 ## Other
 
 Mutex, Atomic, Thread, Semaphore. 
-Function, many Type Traits, a few Algorithms... 
+Function, many Type Traits, a few Algorithms...
+
+## Building
+
+Compile every cpp file in Bedrock/. Define `ASSERTS_ENABLED` if you want asserts and tests. That's about it. 
