@@ -139,6 +139,10 @@ bool TempAllocator<taType>::TryRealloc(taType* inPtr, int inCurrentSize, int inN
 	if (gTempMemArena.Owns(inPtr)) [[likely]]
 	{
 		MemBlock mem = { (uint8*)inPtr, inCurrentSize * (int64)sizeof(taType) };
+
+		// With the TempAllocator, only try to resize the last alloc!
+		// Otherwise doing a new alloc is going to waste a lot of memory very quickly.
+		gAssert(gTempMemArena.IsLastAlloc(mem));
 		return gTempMemArena.TryRealloc(mem, inNewSize * sizeof(taType));
 	}
 	
