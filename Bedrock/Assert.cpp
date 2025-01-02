@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #include <Bedrock/Core.h>
 #include <Bedrock/Test.h>
 #include <Bedrock/Debug.h>
