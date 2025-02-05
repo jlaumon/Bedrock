@@ -16,7 +16,8 @@ Semaphore::Semaphore(int inInitialCount, int inMaxCount)
 
 Semaphore::~Semaphore()
 {
-	CloseHandle((HANDLE)mOSSemaphore);
+	bool success = CloseHandle((HANDLE)mOSSemaphore);
+	gAssert(success);
 }
 
 
