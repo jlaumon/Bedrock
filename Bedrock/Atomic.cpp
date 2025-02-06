@@ -17,10 +17,24 @@ static void sTestAtomic(Atomic<taType>& ioAtomic, MemoryOrder inMemoryOrder, aut
 
 	if constexpr (cIsIntegral<taType> && !cIsSame<taType, bool>)
 	{
+		gAssert(inA < inB); // Min/max below rely on this
+
 		TEST_TRUE(ioAtomic.Add(inB, inMemoryOrder) == inA);
 		TEST_TRUE(ioAtomic.Load(inMemoryOrder) == inA + inB);
 		TEST_TRUE(ioAtomic.Sub(inA, inMemoryOrder) == inA + inB);
 		TEST_TRUE(ioAtomic.Load(inMemoryOrder) == inB);
+
+		ioAtomic.Store(inA);
+		TEST_TRUE(ioAtomic.Max(inB, inMemoryOrder) == inA);
+		TEST_TRUE(ioAtomic.Load() == inB);
+		TEST_TRUE(ioAtomic.Max(inA, inMemoryOrder) == inB);
+		TEST_TRUE(ioAtomic.Load() == inB);
+
+		ioAtomic.Store(inB);
+		TEST_TRUE(ioAtomic.Min(inA, inMemoryOrder) == inB);
+		TEST_TRUE(ioAtomic.Load() == inA);
+		TEST_TRUE(ioAtomic.Min(inB, inMemoryOrder) == inA);
+		TEST_TRUE(ioAtomic.Load() == inA);
 	}
 
 	// Exchange success
@@ -50,8 +64,8 @@ REGISTER_TEST("AtomicInt8")
 {
 	AtomicInt8 atomic;
 
-	sTestAtomic(atomic, MemoryOrder::Relaxed, 42, 20);
-	sTestAtomic(atomic, MemoryOrder::SeqCst, 42, 20);
+	sTestAtomic(atomic, MemoryOrder::Relaxed, 20, 42);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, 20, 42);
 };
 
 
@@ -59,8 +73,8 @@ REGISTER_TEST("AtomicInt64")
 {
 	AtomicInt64 atomic;
 
-	sTestAtomic(atomic, MemoryOrder::Relaxed, (int64)cMaxInt * 10, 1000);
-	sTestAtomic(atomic, MemoryOrder::SeqCst, (int64)cMaxInt * 10, 1000);
+	sTestAtomic(atomic, MemoryOrder::Relaxed, 1000, (int64)cMaxInt * 10);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, 1000, (int64)cMaxInt * 10);
 };
 
 
@@ -68,8 +82,8 @@ REGISTER_TEST("AtomicBool")
 {
 	AtomicBool atomic;
 
-	sTestAtomic(atomic, MemoryOrder::Relaxed, true, false);
-	sTestAtomic(atomic, MemoryOrder::SeqCst, true, false);
+	sTestAtomic(atomic, MemoryOrder::Relaxed, false, true);
+	sTestAtomic(atomic, MemoryOrder::SeqCst, false, true);
 };
 
 

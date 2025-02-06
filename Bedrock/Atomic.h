@@ -71,6 +71,9 @@ struct Atomic : NoCopy
 	ValueType	Add(ValueType inValue, MemoryOrder inOrder = MemoryOrder::SeqCst) requires cIsIntegral<taType> && (!cIsSame<taType, bool>);
 	ValueType	Sub(ValueType inValue, MemoryOrder inOrder = MemoryOrder::SeqCst) requires cIsIntegral<taType> && (!cIsSame<taType, bool>);
 
+	ValueType	Max(ValueType inValue, MemoryOrder inOrder = MemoryOrder::SeqCst) requires cIsIntegral<taType> && (!cIsSame<taType, bool>);
+	ValueType	Min(ValueType inValue, MemoryOrder inOrder = MemoryOrder::SeqCst) requires cIsIntegral<taType> && (!cIsSame<taType, bool>);
+
 private:
 	static force_inline ValueType	sAsValue(StorageType inStorage);
 	static force_inline StorageType	sAsStorage(ValueType inValue);
@@ -204,6 +207,29 @@ typename Atomic<taType>::ValueType Atomic<taType>::Sub(ValueType inValue, Memory
 {
 	return Add(-inValue, inOrder);
 }
+
+
+template <typename taType>
+typename Atomic<taType>::ValueType Atomic<taType>::Max(ValueType inValue, MemoryOrder inOrder) requires cIsIntegral<taType> && (!cIsSame<taType, bool>)
+{
+	taType prev_value = Load(MemoryOrder::Relaxed);
+
+	while (prev_value < inValue && !CompareExchange(prev_value, inValue)) {}
+
+	return prev_value;
+}
+
+
+template <typename taType>
+typename Atomic<taType>::ValueType Atomic<taType>::Min(ValueType inValue, MemoryOrder inOrder) requires cIsIntegral<taType> && (!cIsSame<taType, bool>)
+{
+	taType prev_value = Load(MemoryOrder::Relaxed);
+
+	while (prev_value > inValue && !CompareExchange(prev_value, inValue)) {}
+
+	return prev_value;
+}
+
 
 
 template <typename taType>
