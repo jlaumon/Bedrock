@@ -10,4 +10,8 @@ REGISTER_TEST("Array")
 
 	// Mostly checking that things compile.
 	TEST_TRUE(test == values);
+
+	values.Fill(8);
+	for (int value : values)
+		TEST_TRUE(value == 8);
 };

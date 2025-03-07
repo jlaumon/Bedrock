@@ -22,6 +22,12 @@ struct Array
 	constexpr taType* End() { return mData + taSize; }
 	constexpr taType* begin() { return mData; }
 	constexpr taType* end() { return mData + taSize; }
+
+	constexpr void Fill(const taType& inValue)
+	{
+		for (taType& value : mData)
+			value = inValue;
+	}
 	
 	constexpr const taType& operator[](int inPosition) const { gBoundsCheck(inPosition, taSize); return mData[inPosition]; }
 	constexpr taType& operator[](int inPosition) { gBoundsCheck(inPosition, taSize); return mData[inPosition]; }
