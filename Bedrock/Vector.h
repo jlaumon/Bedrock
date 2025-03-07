@@ -100,6 +100,7 @@ struct Vector : private taAllocator
 	void ClearAndFreeMemory();
 	void Reserve(int inCapacity);
 	void Resize(int inNewSize, EResizeInit inInit = EResizeInit::ZeroInit);
+	void Resize(int inNewSize, const taType& inValue);
 	void ShrinkToFit();				// Note: Only does somethig if the allocator supports TryRealloc (eg. TempAllocator).
 
 	void Insert(int inPosition, const taType& inValue);
@@ -372,6 +373,29 @@ void Vector<taType, taAllocator>::Resize(int inNewSize, EResizeInit inInit)
 			for (int i = mSize, n = inNewSize; i < n; i++)
 				gPlacementNewNoZeroInit(mData[i]);
 		}
+
+		// Update the size.
+		mSize = inNewSize;
+	}
+}
+
+
+template <typename taType, typename taAllocator>
+void Vector<taType, taAllocator>::Resize(int inNewSize, const taType& inValue)
+{
+	if (inNewSize < mSize)
+	{
+		Resize(inNewSize);
+	}
+	else if (inNewSize > mSize)
+	{
+		// Growing.
+		// Reserve memory first.
+		Reserve(inNewSize);
+
+		// Copy-construct the elements.
+		for (int i = mSize, n = inNewSize; i < n; i++)
+			gPlacementNew(mData[i], inValue);
 
 		// Update the size.
 		mSize = inNewSize;

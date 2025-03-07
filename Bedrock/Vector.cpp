@@ -123,6 +123,27 @@ REGISTER_TEST("Vector")
 	}
 
 	{
+		Vector<int> test;
+
+		test.Resize(5, 99);
+
+		Vector<int> expected = { 99, 99, 99, 99, 99 };
+		TEST_TRUE(equal(test, expected));
+
+		test.Resize(1);
+		expected = { 99 };
+		TEST_TRUE(equal(test, expected));
+
+		test.Resize(3);
+		expected = { 99, 0, 0 };
+		TEST_TRUE(equal(test, expected));
+
+		test.Resize(5, EResizeInit::NoZeroInit);
+		expected = { 99, 0, 0, 99, 99 };
+		TEST_TRUE(equal(test, expected));
+	}
+
+	{
 		struct CopyMoveTest
 		{
 			CopyMoveTest(const char* inValue)
