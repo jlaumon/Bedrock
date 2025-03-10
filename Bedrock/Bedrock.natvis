@@ -1,46 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?> 
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
-  <Type Name="Span&lt;*&gt;">
-    <DisplayString>{{ Size={mSize} }}</DisplayString>
-    <Expand>
-      <Item Name="[Size]">mSize</Item>
-      <ArrayItems>
-        <Size>mSize</Size>
-        <ValuePointer>mData</ValuePointer>
-      </ArrayItems>
-    </Expand>
-  </Type>
+	<Type Name="Span&lt;*&gt;">
+		<DisplayString>{{ Size={mSize} }}</DisplayString>
+		<Expand>
+			<Item Name="[Size]">mSize</Item>
+			<ArrayItems>
+				<Size>mSize</Size>
+				<ValuePointer>mData</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	
 
-  <Type Name="Vector&lt;*&gt;">
-    <DisplayString>{{ Size={mSize} }}</DisplayString>
-    <Expand>
-      <Item Name="[Size]">mSize</Item>
-      <Item Name="[Capacity]">mCapacity</Item>
-      <ArrayItems>
-        <Size>mSize</Size>
-        <ValuePointer>mData</ValuePointer>
-      </ArrayItems>
-    </Expand>
-  </Type>
+	<Type Name="Vector&lt;*&gt;">
+		<DisplayString>{{ Size={mSize} }}</DisplayString>
+		<Expand>
+			<Item Name="[Size]">mSize</Item>
+			<Item Name="[Capacity]">mCapacity</Item>
+			<ArrayItems>
+				<Size>mSize</Size>
+				<ValuePointer>mData</ValuePointer>
+			</ArrayItems>
+		</Expand>
+	</Type>
+	
 
-  <Type Name="StringView">
-    <DisplayString>{ mData, [mSize]s8}</DisplayString>
-    <StringView>mData, [mSize]s8</StringView>
-  </Type>
-
-
-  <Type Name="Details::HashMapBucket">
-    <Expand>
-      <Item Name="Distance">mDistanceAndFingerprint / cDistanceIncrement</Item>
-      <Item Name="Fingerprint">(char)(mDistanceAndFingerprint &amp; cFingerprintMask), nvoxb</Item>
-      <Item Name="Index">mKeyValueIndex</Item>
-    </Expand>
-  </Type>
+	<Type Name="StringView">
+		<DisplayString>{ mData, [mSize]s8}</DisplayString>
+		<StringView>mData, [mSize]s8</StringView>
+	</Type>
 
 
-  <Type Name="Atomic&lt;*&gt;">
-    <DisplayString>{ mValue }</DisplayString>
-  </Type>
+	<Type Name="Details::HashMapBucket">
+		<Expand>
+			<Item Name="Distance">mDistanceAndFingerprint / cDistanceIncrement</Item>
+			<Item Name="Fingerprint">(char)(mDistanceAndFingerprint &amp; cFingerprintMask), nvoxb</Item>
+			<Item Name="Index">mKeyValueIndex</Item>
+		</Expand>
+	</Type>
+
+
+	<Type Name="Atomic&lt;*&gt;">
+		<DisplayString>{ mValue }</DisplayString>
+	</Type>
+	
+
+	<Type Name="UniquePtr&lt;*&gt;">
+		<DisplayString Condition="mPtr == nullptr">nullptr</DisplayString>
+		<DisplayString Condition="mPtr != nullptr">UniquePtr {*mPtr}</DisplayString>
+		<Expand>
+			<ExpandedItem>mPtr</ExpandedItem>
+		</Expand>
+	</Type>
 
 </AutoVisualizer>
