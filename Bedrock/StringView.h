@@ -43,6 +43,8 @@ struct StringView
 	constexpr int Find(StringView inString, int inPosition = 0) const;
 	constexpr int FindFirstOf(StringView inCharacters) const;
 	constexpr int FindLastOf(StringView inCharacters) const;
+	constexpr int FindFirstNotOf(StringView inCharacters) const;
+	constexpr int FindLastNotOf(StringView inCharacters) const;
 
 	constexpr bool Contains(StringView inString) const { return Find(inString) != -1; }
 	constexpr bool Contains(char inCharacter) const { return Find(inCharacter) != -1; }
@@ -173,6 +175,29 @@ constexpr int StringView::FindLastOf(StringView inCharacters) const
 }
 
 
+constexpr int StringView::FindFirstNotOf(StringView inCharacters) const
+{
+	for (const char& c : *this)
+	{
+		if (!gContains(inCharacters, c))
+			return (int)(&c - mData);
+	}
+	return -1;
+}
+
+
+constexpr int StringView::FindLastNotOf(StringView inCharacters) const
+{
+	for (const char& c : gBackwards(*this))
+	{
+		if (!gContains(inCharacters, c))
+			return (int)(&c - mData);
+	}
+	return -1;
+}
+
+
+
 constexpr bool StringView::StartsWith(StringView inPrefix) const
 {
 	return SubStr(0, inPrefix.mSize) == inPrefix;
@@ -211,14 +236,14 @@ constexpr StringView StringView::SubStr(int inPosition, int inCount) const
 
 constexpr void StringView::RemoveSuffix(int inCount)
 {
-	gAssert(mSize >= inCount);
+	gAssert(mSize >= inCount && inCount >= 0);
 	mSize -= inCount;
 }
 
 
 constexpr void StringView::RemovePrefix(int inCount)
 {
-	gAssert(mSize >= inCount);
+	gAssert(mSize >= inCount && inCount >= 0);
 	mData += inCount;
 	mSize -= inCount;
 }

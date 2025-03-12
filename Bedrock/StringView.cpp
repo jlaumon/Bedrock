@@ -37,6 +37,16 @@ REGISTER_TEST("StringView")
 	TEST_TRUE(test.FindLastOf("es") == 6);
 	TEST_TRUE(test.FindLastOf("zxcv") == -1);
 
+	TEST_TRUE(test.FindFirstNotOf("t") == 1);
+	TEST_TRUE(test.FindFirstNotOf("es") == 0);
+	TEST_TRUE(test.FindFirstNotOf("zxcv") == 0);
+	TEST_TRUE(test.FindFirstNotOf("tes") == -1);
+
+	TEST_TRUE(test.FindLastNotOf("t") == 6);
+	TEST_TRUE(test.FindLastNotOf("es") == 7);
+	TEST_TRUE(test.FindLastNotOf("zxcv") == 7);
+	TEST_TRUE(test.FindLastNotOf("tes") == -1);
+
 	TEST_TRUE(test.SubStr(1) == "esttest");
 	TEST_TRUE(test.SubStr(2, 1) == "s");
 	TEST_TRUE(test.SubStr(6, 5) == "st");
