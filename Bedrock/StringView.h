@@ -15,7 +15,6 @@ struct StringView
 	constexpr StringView(const char* inString);
 	constexpr StringView(const char* inString, int inSize);
 	constexpr StringView(const char* inBegin, const char* inEnd);
-	constexpr StringView& operator=(const char* inString);
 
 	constexpr int Size() const { return mSize; }
 	constexpr bool Empty() const { return mSize == 0; }
@@ -85,13 +84,6 @@ constexpr StringView::StringView(const char* inBegin, const char* inEnd)
 	gAssert(inEnd >= inBegin);
 	mData = const_cast<char*>(inBegin);
 	mSize = (int)(inEnd - inBegin);
-}
-
-
-constexpr StringView& StringView::operator=(const char* inString)
-{
-	*this = StringView(inString);
-	return *this;
 }
 
 
