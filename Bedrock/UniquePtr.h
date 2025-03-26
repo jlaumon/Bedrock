@@ -44,7 +44,8 @@ struct UniquePtr
 
 	constexpr taType*	Get() const					{ return mPtr; }
 	constexpr taType*	operator->() const			{ return mPtr; }
-	constexpr 			operator taType*() const	{ return mPtr; }
+	constexpr 			operator taType*() const&	{ return mPtr; }
+	constexpr 			operator taType*() const&&	= delete; // Dangerous: The pointer would probably be deleted by the time you use it
 	constexpr explicit	operator bool() const		{ return mPtr != nullptr; }
 
 	taType* Detach() const
