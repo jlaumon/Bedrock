@@ -107,7 +107,7 @@ namespace Details
 	template <int64 taSize>
 	struct TestScopedTempMemory : NoCopy
 	{
-		TestScopedTempMemory()
+		[[nodiscard]] TestScopedTempMemory()
 		{
 			// Save current temp memory setup.
 			mSavedTempMemArena   = gMove(gTempMemArena);
