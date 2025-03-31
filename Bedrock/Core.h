@@ -87,6 +87,18 @@ struct NoCopy
 };
 
 
+// Inherit to disallow copies but allow moves.
+struct MoveOnly
+{
+	MoveOnly()						   = default;
+	~MoveOnly()						   = default;
+	MoveOnly(MoveOnly&&)			   = default;
+	MoveOnly& operator=(MoveOnly&&)	   = default;
+	MoveOnly(const NoCopy&)			   = delete;
+	MoveOnly& operator=(const NoCopy&) = delete;
+};
+
+
 // Litterals for memory sizes.
 consteval int64 operator ""_B(unsigned long long inValue)	{ return (int64)inValue; }
 consteval int64 operator ""_KiB(unsigned long long inValue)	{ return (int64)inValue * 1024; }
