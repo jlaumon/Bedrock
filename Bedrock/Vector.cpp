@@ -50,8 +50,12 @@ REGISTER_TEST("Vector")
 		Vector<int> expected = { 0, 1, 2 };
 		TEST_TRUE(equal(test_structs, expected));
 
-		struct MovableOnly : TestStruct, NoCopy
+		struct MovableOnly : TestStruct
 		{
+			MovableOnly(MovableOnly&&)				   = default;
+			MovableOnly& operator=(MovableOnly&&)      = default;
+			MovableOnly(const MovableOnly&)            = delete;
+			MovableOnly& operator=(const MovableOnly&) = delete;
 			using TestStruct::TestStruct;
 		};
 

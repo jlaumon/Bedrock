@@ -77,13 +77,11 @@ namespace Details
 #define do_once static auto TOKEN_PASTE(initializer, __LINE__) = Details::OnceDummy{} *[&]()
 
 
-// Inherit to disallow copies.
+// Inherit to disallow copies (and moves, implicitly).
 struct NoCopy
 {
 	NoCopy()                         = default;
 	~NoCopy()                        = default;
-	NoCopy(NoCopy&&)                 = default;
-	NoCopy& operator=(NoCopy&&)      = default;
 	NoCopy(const NoCopy&)            = delete;
 	NoCopy& operator=(const NoCopy&) = delete;
 };
