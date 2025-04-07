@@ -58,6 +58,7 @@
 	
 
 	<Type Name="UniquePtr&lt;*&gt;">
+		<SmartPointer Usage="Minimal">mPtr</SmartPointer>
 		<DisplayString Condition="mPtr == nullptr">nullptr</DisplayString>
 		<DisplayString Condition="mPtr != nullptr">UniquePtr {*mPtr}</DisplayString>
 		<Expand>
