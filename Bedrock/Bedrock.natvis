@@ -66,4 +66,14 @@
 		</Expand>
 	</Type>
 
+	
+	<Type Name="Storage&lt;*&gt;">
+		<SmartPointer Usage="Minimal">&amp;mValue</SmartPointer>
+		<DisplayString Condition="mCreated == false">Uninitialized</DisplayString>
+		<DisplayString Condition="mCreated == true">{ mValue }</DisplayString>
+		<Expand>
+			<ExpandedItem>mValue</ExpandedItem>
+		</Expand>
+	</Type>
+
 </AutoVisualizer>
