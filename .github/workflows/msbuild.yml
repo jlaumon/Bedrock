@@ -25,6 +25,7 @@ jobs:
     strategy:
       matrix:
         config: [Debug, DebugOpt, Release]
+        platform: [x64, Clang]
 
     steps:
     - uses: actions/checkout@v4
@@ -39,11 +40,11 @@ jobs:
       uses: microsoft/setup-msbuild@v1.0.2
 
     - name: Build
-      run: msbuild /m /p:Configuration=${{ matrix.config }} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration="${{ matrix.config }}" /p:Platform=${{ matrix.platform }} ${{env.SOLUTION_FILE_PATH}}
 
     # Skip the tests in Release
-    - if: ${{ matrix.config != 'Release' }}
+    - if: ${{ !startsWith(matrix.config, 'Release') }}
       shell: cmd
-      run: .\test\bin\x64\${{ matrix.config }}\BedrockTest${{ matrix.config }}.exe
+      run: .\test\bin\${{ matrix.platform }}\${{ matrix.config }}\BedrockTest${{ matrix.config }}.exe
     
 
