@@ -14,7 +14,7 @@ int64  gSecondsToTicks(double inSeconds);
 
 const int64 gProcessStartTicks = gGetTickCount();
 
-struct Timer : NoCopy
+struct Timer
 {
 	Timer() { Reset(); }
 	void  Reset() { mTicks = gGetTickCount(); }
