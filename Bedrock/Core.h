@@ -117,21 +117,35 @@ template<typename taType, int64 taArraySize>
 consteval int64 gElemCount(const taType (&)[taArraySize]) { return taArraySize; }
 
 
+// Return true if the calling function is evaluated in a constexpr context.
+// Equivalent to std::is_constant_evaluated.
+constexpr bool gIsContantEvaluated() { return __builtin_is_constant_evaluated(); }
+
+
 // Bit twiddling. Move elsewhere?
 constexpr bool  gIsPow2(int64 inValue)								{ return inValue != 0 && (inValue & (inValue - 1)) == 0; }
 constexpr int64 gAlignUp(int64 inValue, int64 inPow2Alignment)		{ return (inValue + (inPow2Alignment - 1)) & ~(inPow2Alignment - 1); }
 constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValue & ~(inPow2Alignment - 1); }
 
-#ifdef _MSC_VER
-extern "C" unsigned char _BitScanReverse64(unsigned long* _Index, unsigned __int64 _Mask);
-#endif
 
-inline int gCountLeadingZeros64(uint64 inValue)
+constexpr int gCountLeadingZeros64(uint64 inValue)
 {
+	if (gIsContantEvaluated())
+	{
+		int leading_zeroes = 0;
+		for (; leading_zeroes < 64; leading_zeroes++)
+		{
+			if (inValue & ((uint64)1 << (63 - leading_zeroes)))
+				break; // Found a one.
+		}
+		return leading_zeroes;
+	}
+	
 	gAssert(inValue != 0);
 #ifdef __clang__
 	return __builtin_clzll(inValue);
 #elif _MSC_VER
+	unsigned char _BitScanReverse64(unsigned long* _Index, unsigned __int64 _Mask);
 	uint32 index;
 	_BitScanReverse64(&index, inValue);
 	return 63 - index;
@@ -140,7 +154,8 @@ inline int gCountLeadingZeros64(uint64 inValue)
 #endif
 }
 
-inline int64 gGetNextPow2(int64 inValue)
+
+constexpr int64 gGetNextPow2(int64 inValue)
 {
 	if (inValue <= 1) [[unlikely]]
 		return 1;
