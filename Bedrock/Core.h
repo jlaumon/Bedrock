@@ -141,14 +141,21 @@ constexpr int gCountLeadingZeros64(uint64 inValue)
 		return leading_zeroes;
 	}
 	
-	gAssert(inValue != 0);
 #ifdef __clang__
+
+	// Note: __builtin_clz is undefined behavior for 0.
+	if (inValue == 0) [[unlikely]]
+		return 0;
+
 	return __builtin_clzll(inValue);
+
 #elif _MSC_VER
+
 	unsigned char _BitScanReverse64(unsigned long* _Index, unsigned __int64 _Mask);
 	uint32 index;
 	_BitScanReverse64(&index, inValue);
 	return 63 - index;
+
 #else
 #error Unknown compiler
 #endif
