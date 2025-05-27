@@ -42,3 +42,8 @@ private:
 	void*	   mPointer = nullptr;
 	InvokeFunc mInvoke	= nullptr;
 };
+
+
+// Deduction guide for function pointers.
+template <typename taResult, typename... taArgs>
+FunctionRef(taResult (*)(taArgs...)) -> FunctionRef<taResult(taArgs...)>;
