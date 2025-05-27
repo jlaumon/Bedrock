@@ -179,3 +179,23 @@ force_inline void		   gMemCopy(void* inDest, const void* inSource, int inSize)		
 force_inline void		   gMemMove(void* inDest, const void* inSource, int inSize)		{ memmove(inDest, inSource, inSize); }
 
 
+// We want some no-op functions (like gMove or gToUnderlying) to be always inlined, but force_inline doesn't work in debug with MSVC by default.
+// [[msvc::intrinsic]] works however (as long as the functions only does a static_cast), so it's a better solution in this case.
+#ifdef __clang__
+#define ATTRIBUTE_INTRINSIC force_inline
+#elif _MSC_VER
+#define ATTRIBUTE_INTRINSIC [[msvc::intrinsic]]
+#else
+#define ATTRIBUTE_INTRINSIC
+#endif
+
+
+// Lifetimebound annotation.
+#ifdef __clang__
+#define ATTRIBUTE_LIFETIMEBOUND [[clang::lifetimebound]]
+#elif _MSC_VER
+#define ATTRIBUTE_LIFETIMEBOUND [[msvc::lifetimebound]]
+#else
+#define ATTRIBUTE_LIFETIMEBOUND
+#endif
+

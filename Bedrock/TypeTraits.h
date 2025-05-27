@@ -1,16 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
-// We want some no-op functions (like gMove or gToUnderlying) to be always inlined, but force_inline doesn't work in debug with MSVC by default.
-// [[msvc::intrinsic]] works however (as long as the functions only does a static_cast), so it's a better solution here.
-#ifdef __clang__
-#define ATTRIBUTE_INTRINSIC force_inline
-#elif _MSC_VER
-#define ATTRIBUTE_INTRINSIC [[msvc::intrinsic]]
-#else
-#define ATTRIBUTE_INTRINSIC
-#endif
-
+#include <Bedrock/Core.h>
 
 // Equivalent to std::is_class
 template<class T> constexpr bool cIsClass = __is_class(T);
