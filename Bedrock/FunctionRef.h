@@ -21,7 +21,7 @@ struct FunctionRef<taResult(taArgs...)>
 	FunctionRef& operator=(const FunctionRef&) = default;
 
 	template <typename taLambda>
-	requires (!cIsSame<RemoveCV<taLambda>, FunctionRef>)	// Don't accept FunctionRef types, this is not a copy-constructor.
+	requires (!cIsSame<RemoveReference<RemoveCV<taLambda>>, FunctionRef>)	// Don't accept FunctionRef types, this is not a copy-constructor.
 	FunctionRef(taLambda&& ioLambda ATTRIBUTE_LIFETIMEBOUND)
 	{
 		mPointer = (void*)&ioLambda;

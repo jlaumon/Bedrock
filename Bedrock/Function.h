@@ -25,7 +25,7 @@ struct Function<taResult(taArgs...)>
 	Function& operator=(const Function&) = delete;
 
 	template <typename taFunc>
-	requires (!cIsSame<RemoveCV<taFunc>, Function>)	// Don't accept Function types, this is not a copy-constructor.
+	requires (!cIsSame<RemoveReference<RemoveCV<taFunc>>, Function>)	// Don't accept Function types, this is not a copy-constructor.
 	Function(taFunc&& ioFunc)
 	{
 		Construct(gForward<taFunc>(ioFunc));
