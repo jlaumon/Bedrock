@@ -86,7 +86,7 @@ struct HashMap : taHash
 	using InsertResult = Conditional<cIsMap, MapInsertResult<taKey, taValue>, SetInsertResult<taKey>>;
 
 	using ConstIter = const KeyValue*;
-	using Iter = const KeyValue*; // FIXME Iter should not allow modifying keys
+	using Iter = KeyValue*; // FIXME Iter should not allow modifying keys
 
 	// Default
 	HashMap() = default;
@@ -266,6 +266,42 @@ struct HashMap : taHash
 		return EmplaceInternal<EReplaceExisting::No>(gForward<taAltKey>(ioKey)).mValue;
 	}
 
+	// At (Map only) ---------------------------------
+
+	template<class T = taValue>
+	T& At(const taKey& inKey) requires cIsMap
+	{
+		Iter iter = FindInternal(inKey);
+		gAssert(iter != End());
+		return iter->mValue;
+	}
+
+	template <typename taAltKey, class T = taValue>
+	requires cIsTransparent<taHash>
+	T& At(const taAltKey& inKey) requires cIsMap
+	{
+		Iter iter = FindInternal(inKey);
+		gAssert(iter != End());
+		return iter->mValue;
+	}
+
+	template<class T = taValue>
+	const T& At(const taKey& inKey) const requires cIsMap
+	{
+		ConstIter iter = FindInternal(inKey);
+		gAssert(iter != End());
+		return iter->mValue;
+	}
+
+	template <typename taAltKey, class T = taValue>
+	requires cIsTransparent<taHash>
+	const T& At(const taAltKey& inKey) const requires cIsMap
+	{
+		ConstIter iter = FindInternal(inKey);
+		gAssert(iter != End());
+		return iter->mValue;
+	}
+
 	// Erase (Map and Set) -----------------------------------
 
 	bool Erase(const taKey& inKey)
@@ -356,7 +392,7 @@ protected:
 
 	// Internal function to find a key.
 	template <typename taAltKey>
-	Iter FindInternal(const taAltKey& inKey) const
+	ConstIter FindInternal(const taAltKey& inKey) const
 	{
 		if (Empty()) [[unlikely]]
 			return End();
@@ -370,6 +406,12 @@ protected:
 
 		// Otherwise return End.
 		return End();
+	}
+
+	template <typename taAltKey>
+	force_inline Iter FindInternal(const taAltKey& inKey)
+	{
+		return const_cast<Iter>(gAsConst(*this).FindInternal(inKey));
 	}
 
 	enum class EReplaceExisting

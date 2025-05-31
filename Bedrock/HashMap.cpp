@@ -8,6 +8,8 @@
 REGISTER_TEST("HashMap")
 {
 	HashMap<String, String> map;
+	auto& const_map = const_cast<const HashMap<String, String>&>(map);
+
 	TEST_TRUE(map.Insert("bread", "butter").mResult == EInsertResult::Added);
 	TEST_TRUE(map.Insert("bread", "jam").mResult == EInsertResult::Found);
 	map["toast"] = "rubbish";
@@ -23,6 +25,11 @@ REGISTER_TEST("HashMap")
 	TEST_TRUE(map.InsertOrAssign("croissant", "chocolate").mResult == EInsertResult::Added);
 
 	TEST_TRUE(map.Find("bread")->mValue == "butter");
+	TEST_TRUE(const_map.Find("bread")->mValue == "butter");
+	TEST_TRUE(map.At("bread") == "butter");
+	TEST_TRUE(const_map.At("bread") == "butter");
+	map.At("bread") = "jam";
+	TEST_TRUE(const_map.At("bread") == "jam");
 	TEST_TRUE(map.Find("toast")->mValue == "rubbish");
 	TEST_TRUE(map.Find(StringView("baguette"))->mValue == "cheese");
 	TEST_TRUE(map.Find(bagel)->mValue == "not sure");
