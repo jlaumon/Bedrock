@@ -132,4 +132,8 @@ template<class T> constexpr bool cIsIntegral = cIsAnyOf<RemoveCV<T>, bool, char,
 
 // Equivalent to std::integral
 template <class T> concept Integral = cIsIntegral<T>;
+
+// Equivalent to std::as_const
+template <class T>
+[[nodiscard]] ATTRIBUTE_INTRINSIC constexpr const T& gAsConst(T& inValue) { return inValue; }
  
