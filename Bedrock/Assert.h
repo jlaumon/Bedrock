@@ -18,19 +18,26 @@ extern "C" void __ud2();
 #ifdef ASSERTS_ENABLED
 
 // Assert macro.
-#define gAssert(condition)                                                              \
-	do                                                                                  \
-	{                                                                                   \
-		if (!(condition) && gReportAssert(#condition, __FILE__, __LINE__)) [[unlikely]] \
-			BREAKPOINT;                                                                 \
+#define gAssert(condition)                                                \
+	do                                                                    \
+	{                                                                     \
+		if (!(condition)) [[unlikely]]                                    \
+			if (gReportAssert(#condition, __FILE__, __LINE__)) [[likely]] \
+				BREAKPOINT;                                               \
 	} while (0)
+
+
+// Verify macro. Similar to assert, but condition is still executed when asserts are disabled.
+#define gVerify(condition) gAssert(condition)
+
 
 // Internal assert report function. Return true if it should break.
 bool gReportAssert(const char* inCondition, const char* inFile, int inLine);
 
 #else
 
-#define gAssert(condition) do { (void)sizeof(!(condition)); } while(0)
+#define gAssert(condition) do { (void)sizeof(condition); } while(0)
+#define gVerify(condition) do { (void)(condition); } while(0)
 
 #endif
 
