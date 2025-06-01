@@ -3,15 +3,18 @@
 
 #include <Bedrock/Core.h>
 
-// Very minimal, no deleter and no array support for now.
-template <typename taType>
+constexpr void gDefaultDelete(auto* inValue) { delete inValue; };
+
+
+// Very minimal, deleter is a function only, no array support for now.
+template <typename taType, void(*taDeleter)(taType*) = gDefaultDelete<taType>>
 struct UniquePtr
 {
 	// Default
 	constexpr UniquePtr() = default;
 	constexpr ~UniquePtr()
 	{
-		delete mPtr;
+		taDeleter(mPtr);
 	}
 
 	// No copy
@@ -30,7 +33,7 @@ struct UniquePtr
 		if (this == &ioOther)
 			return *this;
 
-		delete mPtr;
+		taDeleter(mPtr);
 		mPtr = ioOther.mPtr;
 		ioOther.mPtr = nullptr;
 		return *this;
