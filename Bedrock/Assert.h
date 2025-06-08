@@ -36,7 +36,7 @@ bool gReportAssert(const char* inCondition, const char* inFile, int inLine);
 
 #else
 
-#define gAssert(condition) do { (void)sizeof(condition); } while(0)
+#define gAssert(condition) do { (void)sizeof(!(condition)); } while(0)
 #define gVerify(condition) do { (void)(condition); } while(0)
 
 #endif
