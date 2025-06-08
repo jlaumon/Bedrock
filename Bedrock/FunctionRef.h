@@ -30,7 +30,7 @@ struct FunctionRef<taResult(taArgs...)>
 
 	bool IsValid() const { return mInvoke != nullptr; }
 
-	[[nodiscard]] taResult operator()(taArgs&&... ioArgs)
+	[[nodiscard]] taResult operator()(taArgs... ioArgs)
 	{
 		gAssert(IsValid());
 		return mInvoke(mPointer, gForward<taArgs>(ioArgs)...);

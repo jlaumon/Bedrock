@@ -53,7 +53,7 @@ struct Function<taResult(taArgs...)>
 
 	bool IsValid() const { return mVTable != nullptr; }
 
-	[[nodiscard]] taResult operator()(taArgs&&... ioArgs)
+	[[nodiscard]] taResult operator()(taArgs... ioArgs)
 	{
 		gAssert(IsValid());
 		return mVTable->mInvoke(mStorage, gForward<taArgs>(ioArgs)...);
