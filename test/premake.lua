@@ -70,6 +70,7 @@ solution "BedrockTest"
 			"../Bedrock/*.h",
 			"../Bedrock/*.cpp",
 			"../Bedrock/*.natvis",
+			"../Bedrock/*.natstepfilter",
 			"../.clang-format",
 			"../.editorconfig",
 			"Main.cpp"

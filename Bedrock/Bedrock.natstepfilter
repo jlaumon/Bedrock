@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<StepFilter xmlns="http://schemas.microsoft.com/vstudio/debugger/natstepfilter/2010">
+	<Function>
+		<Name>gMove&lt;.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>gForward&lt;.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>gPlacementNew&lt;.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>gPlacementNewNoZeroInit&lt;.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>Storage&lt;.*::operator-&gt;</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>UniquePtr&lt;.*::operator-&gt;</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>StringView::StringView(.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+	<Function>
+		<Name>Span&lt;.*::Span.*</Name>
+		<Action>NoStepInto</Action>
+	</Function>
+</StepFilter>
