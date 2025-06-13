@@ -12,20 +12,21 @@ struct Event : NoCopy
 {
 	enum ResetMode
 	{
-		AutoReset,
-		ManualReset
+		AutoReset,	// The event is reset automatically after waiting on it.
+		ManualReset // The event stays set until Reset is called.
 	};
 
 	Event(ResetMode inResetMode, bool inInitialState = false);
 	~Event();
 
-	void Set();
-	void Reset();
+	void Set();	  // Set the event.
+	void Reset(); // Reset the event.
 	
-	bool TryWait() const;
-	bool TryWaitFor(NanoSeconds inTimeout) const;
-	void Wait() const;
+	bool TryWait() const;						  // Return true if the event is set.
+	bool TryWaitFor(NanoSeconds inTimeout) const; // Wait until the event is set (return true), or until timeout (return false).
+	void Wait() const;							  // Wait until the event is set.
 
+	OSEvent GetOSHandle() const { return mOSEvent; }
 private:
 
 	OSEvent mOSEvent = {};
