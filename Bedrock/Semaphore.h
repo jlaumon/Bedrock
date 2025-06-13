@@ -18,6 +18,8 @@ struct Semaphore : NoCopy
 	void Acquire();
 	void Release(int inCount = 1);
 
+	OSSemaphore GetOSHandle() const { return mOSSemaphore; }
+
 private:
 
 	OSSemaphore mOSSemaphore = {};
