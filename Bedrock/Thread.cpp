@@ -43,6 +43,8 @@ Thread::~Thread()
 
 void Thread::Create(const ThreadConfig& inConfig, Function<void(Thread&)>&& ioEntryPoint)
 {
+	gAssert(mOSThread == nullptr); // There's already a thread running!
+
 	mEntryPoint = gMove(ioEntryPoint);
 	mConfig     = inConfig;
 
