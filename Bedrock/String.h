@@ -88,6 +88,8 @@ struct StringBase : StringView, private taAllocator
 	void Clear() { Resize(0); }
 	void ShrinkToFit();				// Note: Only does somethig if the allocator supports TryRealloc (eg. TempAllocator).
 
+	void Insert(int inPosition, StringView inString);
+
 	int Capacity() const { return mCapacity; }
 
 	static constexpr bool cHasMaxSize = requires { taAllocator().MaxSize(); };
@@ -232,6 +234,29 @@ template <typename taAllocator> void StringBase<taAllocator>::ShrinkToFit()
 
 	if (Allocator::TryRealloc(mData, mCapacity, mSize + 1))
 		mCapacity = mSize + 1;
+}
+
+
+template <typename taAllocator>
+void StringBase<taAllocator>::Insert(int inPosition, StringView inString)
+{
+	if (inString.Empty())
+		return;
+
+	gBoundsCheck(inPosition, mSize + 1);
+	// Copying from self is not allowed.
+	gAssert(mData > inString.End() || (mData + mCapacity) < inString.Begin() || inString.Empty());
+
+	Reserve(mSize + inString.Size() + 1);
+
+	// Move existing elements to free inPosition.
+	// Note: if we're inserting at the end, this is just moving the null terminator.
+	gMemMove(mData + inPosition + inString.Size(), mData + inPosition, mSize - inPosition + 1);
+
+	// Copy the string at inPosition.
+	gMemCopy(mData + inPosition, inString.Data(), inString.Size());
+
+	mSize += inString.Size();
 }
 
 
