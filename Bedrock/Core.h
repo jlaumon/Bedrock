@@ -122,10 +122,18 @@ consteval int64 gElemCount(const taType (&)[taArraySize]) { return taArraySize; 
 constexpr bool gIsContantEvaluated() { return __builtin_is_constant_evaluated(); }
 
 
+// Equivalent to std::type_identity
+// TODO: move to TypeTraits.h once the bit twiddling functions are moved to a separate header
+namespace Details
+{
+	template<class T> struct Identity { using Type = T; };
+}
+template<class T> using Identity = typename Details::Identity<T>::Type;
+
 // Bit twiddling. Move elsewhere?
-constexpr bool  gIsPow2(int64 inValue)								{ return inValue != 0 && (inValue & (inValue - 1)) == 0; }
-constexpr int64 gAlignUp(int64 inValue, int64 inPow2Alignment)		{ return (inValue + (inPow2Alignment - 1)) & ~(inPow2Alignment - 1); }
-constexpr int64 gAlignDown(int64 inValue, int64 inPow2Alignment)	{ return inValue & ~(inPow2Alignment - 1); }
+template <typename T> constexpr bool gIsPow2(T inValue)									{ return inValue != 0 && (inValue & (inValue - 1)) == 0; }
+template <typename T> constexpr T	 gAlignUp(T inValue, Identity<T> inPow2Alignment)	{ return (inValue + (inPow2Alignment - 1)) & ~(inPow2Alignment - 1); }
+template <typename T> constexpr T	 gAlignDown(T inValue, Identity<T> inPow2Alignment)	{ return inValue & ~(inPow2Alignment - 1); }
 
 
 constexpr int gCountLeadingZeros64(uint64 inValue)
