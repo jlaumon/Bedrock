@@ -6,6 +6,7 @@
 
 struct ZeroLiteral
 {
+	// Note: The assert is just there to break compilation if inOrder isn't 0 (because the failing case isn't constexpr code).
 	consteval ZeroLiteral(int inOrder) { gAssert(inOrder == 0); }
 };
 
