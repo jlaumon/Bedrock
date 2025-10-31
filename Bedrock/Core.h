@@ -99,7 +99,7 @@ struct MoveOnly
 };
 
 
-// Litterals for memory sizes.
+// Literals for memory sizes.
 consteval int64 operator ""_B(unsigned long long inValue)	{ return (int64)inValue; }
 consteval int64 operator ""_KiB(unsigned long long inValue)	{ return (int64)inValue * 1024; }
 consteval int64 operator ""_MiB(unsigned long long inValue)	{ return (int64)inValue * 1024 * 1024; }
