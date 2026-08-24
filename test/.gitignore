@@ -3,6 +3,7 @@ obj/
 bin/
 enc_temp_folder/
 *.sln
+*.slnx
 *.vcxproj
 *.vcxproj.filters
 *.user

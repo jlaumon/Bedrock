@@ -344,7 +344,7 @@ REGISTER_TEST("VMemVector")
 	TEST_TRUE(test2 == Span(test));
 
 	// This should cause a new page to be committed.
-	test2.Resize(5_KiB / sizeof(test[0]), EResizeInit::NoZeroInit);
+	test2.Resize((int)(5_KiB / sizeof(test[0])), EResizeInit::NoZeroInit);
 	test2.PushBack(1); // Make sure writing to it doesn't crash.
 
 	test2 = gMove(test);
