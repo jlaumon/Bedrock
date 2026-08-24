@@ -12,11 +12,8 @@ solution "BedrockTest"
 		exceptionhandling "Off"
 		rtti "Off"
 		architecture "x64"
-		flags 
-		{
-			"MultiProcessorCompile",
-			"FatalWarnings"
-		}
+		fatalwarnings "All"
+		multiprocessorcompile "On"
 
 		buildoptions
 		{
@@ -38,8 +35,8 @@ solution "BedrockTest"
 			defines "ASSERTS_ENABLED"
 			optimize "Debug"
 			runtime "Debug"
-			editandcontinue "Off"	  -- incompatible with ASAN
-			flags "NoIncrementalLink" -- incompatible with ASAN
+			editandcontinue "Off" -- incompatible with ASAN
+			incrementallink "Off" -- incompatible with ASAN
 			sanitize "Address"
 
 		-- Note: ASAN + Clang is not working. This is enough to make it link, but it doesn't run.
