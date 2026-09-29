@@ -10,6 +10,7 @@ struct Array
 	using ValueType = taType;
 
 	constexpr static int Size() { return taSize; }
+	constexpr static int SizeInBytes() { return taSize * sizeof(taType); }
 
 	constexpr const taType* Data() const { return mData; }
 	constexpr taType* Data() { return mData; }

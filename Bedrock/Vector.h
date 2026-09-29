@@ -60,6 +60,7 @@ struct Vector : private taAllocator
 	Vector& operator=(Span<taOtherType> inSpan);
 	
 	int Size() const { return mSize; }
+	int SizeInBytes() const { return mSize * sizeof(taType); }
 	int Capacity() const { return mCapacity; }
 	bool Empty() const { return mSize == 0; }
 
