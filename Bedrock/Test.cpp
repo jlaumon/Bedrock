@@ -29,12 +29,17 @@ void gRegisterTest(const char* inName, TestFunction inFunction)
 }
 
 
-static thread_local StringView sCurrentTestName;
-static thread_local bool       sCurrentTestSuccess;
+static thread_local StringView	sCurrentTestName;
+static thread_local bool		sCurrentTestSuccess;
 
 // Extremely basic leak tracking.
-static thread_local int        sCurrentTestAllocCount;
-static thread_local int64      sCurrentTestAllocTotalSize;
+static thread_local int			sCurrentTestAllocCount;
+static thread_local int64		sCurrentTestAllocTotalSize;
+
+// Assert tracking.
+static thread_local bool		sCurrentTestExpectAssert;
+static thread_local int			sCurrentTestAssertCount;
+
 
 bool gIsRunningTest()
 {
@@ -49,11 +54,14 @@ TestResult gRunTests()
 
 	for (const Test& test : sGetAllTests())
 	{
-		sCurrentTestName       = test.mName;
-		sCurrentTestSuccess    = true;
+		sCurrentTestName		 = test.mName;
+		sCurrentTestSuccess		 = true;
 
 		sCurrentTestAllocCount     = 0;
 		sCurrentTestAllocTotalSize = 0;
+
+		sCurrentTestExpectAssert = false;
+		sCurrentTestAssertCount	 = 0;
 
 		gTrace(R"(Test "%s" starting.)", test.mName);
 		Timer timer;
@@ -94,6 +102,15 @@ void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int 
 		BREAKPOINT;
 }
 
+void gTestReportAssert(const char* inMacro, const char* inCode, const char* inFile, int inLine)
+{
+	// If we're expecting asserts, just count the asserts. Otherwise fail the test.
+	if (sCurrentTestExpectAssert)
+		sCurrentTestAssertCount++;
+	else
+		gFailTest(inMacro, inCode, inFile, inLine);
+}
+
 
 void gRegisterAlloc(MemBlock inMemory)
 {
@@ -105,4 +122,23 @@ void gRegisterFree(MemBlock inMemory)
 {
 	sCurrentTestAllocCount--;
 	sCurrentTestAllocTotalSize -= inMemory.mSize;
+}
+
+Details::TestAssertScope::TestAssertScope(const char* inMacro, const char* inCode, const char* inFile, int inLine)
+{
+	sCurrentTestExpectAssert = true;
+	mMacro					 = inMacro;
+	mCode					 = inCode;
+	mFile					 = inFile;
+	mLine					 = inLine;
+}
+
+Details::TestAssertScope::~TestAssertScope()
+{
+	// If there were no asserts, fail the test.
+	if (sCurrentTestAssertCount == 0)
+		gFailTest(mMacro, mCode, mFile, mLine);
+
+	sCurrentTestExpectAssert = false;
+	sCurrentTestAssertCount  = 0;
 }

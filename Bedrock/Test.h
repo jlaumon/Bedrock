@@ -38,6 +38,9 @@ bool gIsRunningTest();
 // Fail current test. Called automatically by the TEST macros.
 void gFailTest(const char* inMacro, const char* inCode, const char* inFile, int inLine);
 
+// Report an assert during a test. Called automatically when an assert triggers during a test.
+void gTestReportAssert(const char* inMacro, const char* inCode, const char* inFile, int inLine);
+
 // During tests, memory allocation functions can register their allocations/frees, for leak tracking.
 void gRegisterAlloc(MemBlock inMemory);
 void gRegisterFree(MemBlock inMemory);
@@ -55,6 +58,17 @@ namespace Details
 
 	struct TestRegisterer { TestRegisterer(const char* inName, TestFunction inFunction) { IF_TESTS_ENABLED(gRegisterTest(inName, inFunction)); } };
 	inline TestRegisterer operator*(TestDummy inDummy, TestFunction inFunction) { return { inDummy.mName, inFunction }; }
+
+	struct TestAssertScope
+	{
+		TestAssertScope(const char* inMacro, const char* inCode, const char* inFile, int inLine);
+		~TestAssertScope();
+
+		const char* mMacro;
+		const char* mCode;
+		const char* mFile;
+		int			mLine;
+	};
 }
 
 // Register a test.
@@ -72,6 +86,10 @@ namespace Details
 
 // Check that a condition is false. Fail the current test otherwise.
 #define TEST_FALSE(code) do { if (code) gFailTest("TEST_FALSE", #code, Details::ConstevalGetFileNamePart(__FILE__), __LINE__); } while(0)
+
+// Check that code triggers an assert. Fail the current test otherwise.
+#define TEST_ASSERT(code) do { Details::TestAssertScope scope("TEST_ASSERT", #code, Details::ConstevalGetFileNamePart(__FILE__), __LINE__); (void)code; } while(0)
+
 
 
 // Initialize Temporary Memory for the scope of a test.

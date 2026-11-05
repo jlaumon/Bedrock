@@ -20,7 +20,7 @@ bool gReportAssert(const char* inCondition, const char* inFile, int inLine)
 	// If we are running a test, fail that test.
 	if (gIsRunningTest())
 	{
-		gFailTest("gAssert", inCondition, gGetFileNamePart(inFile), inLine);
+		gTestReportAssert("gAssert", inCondition, gGetFileNamePart(inFile), inLine);
 
 		// Don't break during tests, there's already a breakpoint inside gFailTest if a debugger is attached.
 		return false;
