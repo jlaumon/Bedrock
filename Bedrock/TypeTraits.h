@@ -36,16 +36,16 @@ template <class T> constexpr bool cIsTriviallyCopyable = __is_trivially_copyable
 // Equivalent to std::is_const
 namespace Details
 {
-	template<class T> struct IsConst { static constexpr bool cValue = false; };
-	template<class T> struct IsConst<const T> { static constexpr bool cValue = true; };
+	template<class T> struct IsConst							{ static constexpr bool cValue = false; };
+	template<class T> struct IsConst<const T>					{ static constexpr bool cValue = true; };
 }
 template<class T> constexpr bool cIsConst = Details::IsConst<T>::cValue;
 
 // Equivalent to std::is_same
 namespace Details
 {
-	template<class T, class U> struct IsSame { static constexpr bool cValue = false; };
-	template<class T> struct IsSame<T, T> { static constexpr bool cValue = true; };
+	template<class T, class U> struct	IsSame					{ static constexpr bool cValue = false; };
+	template<class T> struct			IsSame<T, T>			{ static constexpr bool cValue = true; };
 }
 template<class T, class U> constexpr bool cIsSame = Details::IsSame<T, U>::cValue;
 
@@ -55,38 +55,38 @@ template<class T, class... taTypes> constexpr bool cIsAnyOf = (cIsSame<T, taType
 // Equivalent to std::remove_reference
 namespace Details
 {
-	template<class T> struct RemoveReference { using Type = T; };
-	template<class T> struct RemoveReference<T&> { using Type = T; };
-	template<class T> struct RemoveReference<T&&> { using Type = T; };
+	template<class T> struct RemoveReference					{ using Type = T; };
+	template<class T> struct RemoveReference<T&>				{ using Type = T; };
+	template<class T> struct RemoveReference<T&&>				{ using Type = T; };
 }
 template<class T> using RemoveReference = typename Details::RemoveReference<T>::Type;
 
 // Equivalent to std::remove_cv
 namespace Details
 {
-	template<class T> struct RemoveCV { using Type = T; };
-	template<class T> struct RemoveCV<const T> { using Type = T; };
-	template<class T> struct RemoveCV<volatile T> { using Type = T; };
-	template<class T> struct RemoveCV<const volatile T> { using Type = T; };
+	template<class T> struct RemoveCV							{ using Type = T; };
+	template<class T> struct RemoveCV<const T>					{ using Type = T; };
+	template<class T> struct RemoveCV<volatile T>				{ using Type = T; };
+	template<class T> struct RemoveCV<const volatile T>			{ using Type = T; };
 }
 template<class T> using RemoveCV = typename Details::RemoveCV<T>::Type;
 
 // Equivalent to std::remove_pointer
 namespace Details
 {
-	template<class T> struct RemovePointer { using Type = T; };
-	template<class T> struct RemovePointer<T*> { using Type = T; };
-	template<class T> struct RemovePointer<T* const> { using Type = T; };
-	template<class T> struct RemovePointer<T* volatile> { using Type = T; };
-	template<class T> struct RemovePointer<T* const volatile> { using Type = T; };
+	template<class T> struct RemovePointer						{ using Type = T; };
+	template<class T> struct RemovePointer<T*>					{ using Type = T; };
+	template<class T> struct RemovePointer<T* const>			{ using Type = T; };
+	template<class T> struct RemovePointer<T* volatile>			{ using Type = T; };
+	template<class T> struct RemovePointer<T* const volatile>	{ using Type = T; };
 }
 template<class T> using RemovePointer = typename Details::RemovePointer<T>::Type;
 
 // Equivalent to std::is_lvalue_reference
 namespace Details
 {
-	template<class T> struct IsLValueReference { static constexpr bool cValue = false; };
-	template<class T> struct IsLValueReference<T&> { static constexpr bool cValue = true; };
+	template<class T> struct IsLValueReference					{ static constexpr bool cValue = false; };
+	template<class T> struct IsLValueReference<T&>				{ static constexpr bool cValue = true; };
 }
 template<class T> constexpr bool cIsLValueReference = Details::IsConst<T>::cValue;
 
@@ -96,19 +96,19 @@ template<class T> constexpr bool cIsVoid = cIsSame<void, RemoveCV<T>>;
 // Equivalent to std::is_pointer
 namespace Details
 {
-	template<class T> struct IsPointer	{ static constexpr bool cValue = false; };
-	template<class T> struct IsPointer<T*> { static constexpr bool cValue = true; };
-	template<class T> struct IsPointer<T* const> { static constexpr bool cValue = true; };
-	template<class T> struct IsPointer<T* volatile> { static constexpr bool cValue = true; };
-	template<class T> struct IsPointer<T* const volatile> { static constexpr bool cValue = true; };
+	template<class T> struct IsPointer							{ static constexpr bool cValue = false; };
+	template<class T> struct IsPointer<T*>						{ static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* const>				{ static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* volatile>				{ static constexpr bool cValue = true; };
+	template<class T> struct IsPointer<T* const volatile>		{ static constexpr bool cValue = true; };
 }
 template<class T> constexpr bool cIsPointer = Details::IsPointer<T>::cValue;
 
 // Equivalent to std::conditional
 namespace Details
 {
-	template<bool, class T, class F> struct Conditional { using Type = T; };
-	template<class T, class F> struct Conditional<false, T, F> { using Type = F; };
+	template<bool, class T, class F>	struct Conditional				{ using Type = T; };
+	template<class T, class F>			struct Conditional<false, T, F> { using Type = F; };
 }
 template<bool B, class T, class F> using Conditional = typename Details::Conditional<B, T, F>::Type;
 
