@@ -133,6 +133,26 @@ template<class T> constexpr bool cIsIntegral = cIsAnyOf<RemoveCV<T>, bool, char,
 // Equivalent to std::integral
 template <class T> concept Integral = cIsIntegral<T>;
 
+// Equivalent to std::is_floating_point
+template<class T> constexpr bool cIsFloatingPoint = cIsAnyOf<RemoveCV<T>, float, double>;
+
+// Equivalent to std::floating_point
+template <class T> concept FloatingPoint = cIsFloatingPoint<T>;
+
+// Equivalent to std::is_arithmetic
+template<class T> constexpr bool cIsArithmetic = cIsIntegral<T> || cIsFloatingPoint<T>;
+
+// Arithmetic concept (std does not have it yet apparently)
+template <class T> concept Arithmetic = cIsArithmetic<T>;
+
+// Equivalent to std::is_signed
+namespace Details
+{
+	template<class T>							struct IsSigned		{ static constexpr bool cValue = false; };
+	template<class T> requires Arithmetic<T>	struct IsSigned<T>	{ static constexpr bool cValue = static_cast<T>(-1) < static_cast<T>(0); };
+}
+template<class T> constexpr bool cIsSigned = Details::IsSigned<T>::cValue;
+
 // Equivalent to std::as_const
 template <class T>
 [[nodiscard]] ATTRIBUTE_INTRINSIC constexpr const T& gAsConst(T& inValue) { return inValue; }
