@@ -88,7 +88,7 @@ namespace Details
 	template<class T> struct IsLValueReference					{ static constexpr bool cValue = false; };
 	template<class T> struct IsLValueReference<T&>				{ static constexpr bool cValue = true; };
 }
-template<class T> constexpr bool cIsLValueReference = Details::IsConst<T>::cValue;
+template<class T> constexpr bool cIsLValueReference = Details::IsLValueReference<T>::cValue;
 
 // Equivalent to std::is_void
 template<class T> constexpr bool cIsVoid = cIsSame<void, RemoveCV<T>>;
